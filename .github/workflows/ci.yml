@@ -1,0 +1,40 @@
+name: CI
+
+# The release workflow is tag-only; this runs on every push and PR so
+# contributions get vetted before merge. It does not run the Playwright E2E
+# suite (that needs a pre-built binary + browsers — kept as a local step).
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend (vet + test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: go vet
+        run: cd backend && go vet ./...
+      - name: go test
+        run: cd backend && go test ./...
+
+  frontend:
+    name: Frontend (lint + build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm lint
+      - name: Build (static export)
+        run: pnpm build

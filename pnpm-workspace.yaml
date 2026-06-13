@@ -1,0 +1,11 @@
+# Single-package repo. pnpm 10+ requires an explicit `packages` field whenever
+# this file exists, so the root is listed as the only package.
+packages:
+  - .
+
+# Dependencies allowed to run install/build scripts (pnpm blocks these by
+# default since v10). Listing a package that is absent is harmless.
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
+  - unrs-resolver

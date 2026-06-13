@@ -1,0 +1,121 @@
+{
+  "participants": [
+    {
+      "id": 114,
+      "email": "maya.lee@northstar-labs.example",
+      "name": "Maya Chen"
+    },
+    {
+      "id": 115,
+      "email": "priya.raman@lantern-research.example",
+      "name": "Priya Raman"
+    }
+  ],
+  "messages": [
+    {
+      "id": 2122,
+      "conversation": 5005,
+      "sent_at": "2025-12-03T10:00:00Z",
+      "sender": 114,
+      "to": [
+        1,
+        102,
+        105
+      ],
+      "subject": "Atlas citation review from new address",
+      "body": "I am sending from the Northstar Labs address for this review. Jon and Nora, the citation treatment and user-edit ownership notes match our Atlas decisions."
+    },
+    {
+      "id": 2123,
+      "conversation": 5005,
+      "sent_at": "2025-12-03T13:00:00Z",
+      "sender": 102,
+      "to": [
+        1,
+        114,
+        105
+      ],
+      "subject": "Re: Atlas citation review from new address",
+      "body": "Confirmed. The migration boundary is unchanged, and Nora's latest design still keeps each generated claim close to its source."
+    },
+    {
+      "id": 2124,
+      "conversation": 5005,
+      "sent_at": "2026-02-04T09:30:00Z",
+      "sender": 105,
+      "to": [
+        1,
+        102,
+        114
+      ],
+      "subject": "Re: Atlas citation review from new address",
+      "body": "The updated prototype now separates generated sections from user edits and preserves the citation trail through refreshes."
+    },
+    {
+      "id": 2125,
+      "conversation": 5005,
+      "sent_at": "2026-04-15T15:00:00Z",
+      "sender": 114,
+      "to": [
+        1,
+        102,
+        105
+      ],
+      "subject": "Re: Atlas citation review from new address",
+      "body": "The product review is complete. Keep the Northstar Labs address on this thread until the account migration is finished."
+    },
+    {
+      "id": 2126,
+      "conversation": 5006,
+      "sent_at": "2025-12-10T11:00:00Z",
+      "sender": 115,
+      "to": [
+        1,
+        107,
+        108
+      ],
+      "subject": "Research synthesis from institute address",
+      "body": "I am using the Lantern Research address for the institute work. Leah and Owen, please review the evidence boundary and retrieval interpretation."
+    },
+    {
+      "id": 2127,
+      "conversation": 5006,
+      "sent_at": "2025-12-10T14:00:00Z",
+      "sender": 107,
+      "to": [
+        1,
+        115,
+        108
+      ],
+      "subject": "Re: Research synthesis from institute address",
+      "body": "The narrative now distinguishes sourced observations from interpretation and leaves the unresolved questions explicit."
+    },
+    {
+      "id": 2128,
+      "conversation": 5006,
+      "sent_at": "2026-02-11T10:15:00Z",
+      "sender": 108,
+      "to": [
+        1,
+        107,
+        115
+      ],
+      "subject": "Re: Research synthesis from institute address",
+      "body": "The retrieval validation supports the current interpretation. I linked the outlier threads so the summary does not overstate the pattern."
+    },
+    {
+      "id": 2129,
+      "conversation": 5006,
+      "sent_at": "2026-04-22T16:00:00Z",
+      "sender": 115,
+      "to": [
+        1,
+        107,
+        108
+      ],
+      "subject": "Re: Research synthesis from institute address",
+      "body": "The institute review is complete. Keep this address separate until the account records are reconciled."
+    }
+  ]
+}
+

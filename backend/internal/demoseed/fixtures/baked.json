@@ -1,0 +1,299 @@
+{
+  "people": [
+    {
+      "id": 1,
+      "name": "Maya Chen",
+      "email": "maya@northstar.example",
+      "aliases": [
+        "maya.chen@northstar.example"
+      ],
+      "note": "Product lead",
+      "summary": "Maya Chen is a product lead and long-running Atlas collaborator. Her one-to-one roadmap work with Alex expanded into a shared design loop with Jon Bell and Nora Kim, and she later connected those product decisions to Priya and Leah's source-aware synthesis work. [msg:2001][msg:2044][msg:2091][msg:2094][msg:2116]",
+      "facet": "Maya connects product decisions and customer interviews to the Atlas design group, while borrowing evidence patterns from the research and editorial circle. [msg:2091][msg:2094][msg:2116]"
+    },
+    {
+      "id": 2,
+      "name": "Jon Bell",
+      "email": "jon@fieldnote.example",
+      "aliases": [],
+      "note": "Engineering partner",
+      "summary": "Jon Bell is an engineering partner spanning product and infrastructure work. He collaborates with Maya Chen and Nora Kim on Atlas, then crosses into archive reliability work with Owen Brooks and Theo Martin. [msg:2005][msg:2041][msg:2092][msg:2109][msg:2113]",
+      "facet": "Jon is a bridge between interface delivery and backend reliability, with recurring attention to schema boundaries and migration safety. [msg:2092][msg:2109]"
+    },
+    {
+      "id": 3,
+      "name": "Priya Raman",
+      "email": "priya@lantern.example",
+      "aliases": [
+        "priya.r@lantern.example"
+      ],
+      "note": "Research collaborator",
+      "summary": "Priya Raman is a research collaborator focused on longitudinal memory studies. Her work increasingly happens in a synthesis circle with Leah Park and Owen Brooks, and she advises the wider team on keeping evidence boundaries and uncertainty visible. [msg:2009][msg:2097][msg:2100][msg:2102][msg:2117][msg:2121]",
+      "facet": "Priya anchors research synthesis and participant evidence while Leah shapes the writing and Owen validates retrieval quality. [msg:2097][msg:2100][msg:2117]"
+    },
+    {
+      "id": 4,
+      "name": "Eli Torres",
+      "email": "eli@harbor.example",
+      "aliases": [],
+      "note": "Community organizer",
+      "summary": "Eli Torres is a community organizer for the Harbor knowledge salon. Eli works closely with Sam Okafor and Inez Silva on venue operations, mentor coordination, participant follow-up, and preserving who made each community commitment. [msg:2013][msg:2103][msg:2106][msg:2108][msg:2118][msg:2121]",
+      "facet": "Eli leads community format and speaker decisions while Sam owns operations and Inez coordinates the program. [msg:2103][msg:2106][msg:2118]"
+    },
+    {
+      "id": 5,
+      "name": "Nora Kim",
+      "email": "nora@papertrail.example",
+      "aliases": [
+        "nora.kim@papertrail.example"
+      ],
+      "note": "Design collaborator",
+      "summary": "Nora Kim is a design collaborator shaping Memento's relationship and project reading experience. In the Atlas group with Maya Chen and Jon Bell, she repeatedly pushes for visible citations, clear user-edit ownership, and calmer navigation. [msg:2017][msg:2043][msg:2091][msg:2093][msg:2096]",
+      "facet": "Nora translates product and engineering constraints into reading rhythm, citation placement, and navigation decisions. [msg:2093][msg:2096]"
+    },
+    {
+      "id": 6,
+      "name": "Sam Okafor",
+      "email": "sam@switchyard.example",
+      "aliases": [],
+      "note": "Operations partner",
+      "summary": "Sam Okafor is an operations partner whose archive-import runbooks extend into Harbor program delivery. Sam coordinates with Eli Torres and Inez Silva on logistics, ownership, repeatable follow-up, and validation steps that prevent teams from restarting from scratch. [msg:2021][msg:2045][msg:2103][msg:2105][msg:2108][msg:2119]",
+      "facet": "Sam turns plans into operational checklists, covering support load, rollout checks, event logistics, and named validation owners. [msg:2105][msg:2108][msg:2119]"
+    },
+    {
+      "id": 7,
+      "name": "Leah Park",
+      "email": "leah@softsignal.example",
+      "aliases": [],
+      "note": "Writer and editor",
+      "summary": "Leah Park is a writer and editor connecting the memory-systems essay series to Priya Raman's research and Owen Brooks's retrieval analysis. She also develops narrative patterns that distinguish sourced facts, interpretation, and unresolved questions. [msg:2025][msg:2097][msg:2099][msg:2102][msg:2120][msg:2121]",
+      "facet": "Leah converts research findings into readable arguments while keeping citations close and uncertainty explicit. [msg:2099][msg:2102][msg:2120]"
+    },
+    {
+      "id": 8,
+      "name": "Owen Brooks",
+      "email": "owen@maproom.example",
+      "aliases": [],
+      "note": "Data collaborator",
+      "summary": "Owen Brooks is a data collaborator who appears in both the research synthesis circle and the archive reliability group. He validates retrieval findings with Priya and Leah, then tests rollups and recovery behavior with Jon and Theo. [msg:2029][msg:2097][msg:2101][msg:2109][msg:2111]",
+      "facet": "Owen is the cross-group validation partner for metrics, retrieval quality, rollups, and recovery checks. [msg:2101][msg:2111]"
+    },
+    {
+      "id": 9,
+      "name": "Inez Silva",
+      "email": "inez@commonthread.example",
+      "aliases": [],
+      "note": "Program lead",
+      "summary": "Inez Silva is a program lead connecting fellowship planning with the Harbor knowledge salon. Alongside Eli Torres and Sam Okafor, she coordinates mentors, participant outcomes, and the follow-up owner for each checkpoint. [msg:2033][msg:2046][msg:2103][msg:2104][msg:2108]",
+      "facet": "Inez holds the program-level view across cohorts, mentors, participant outcomes, and community follow-up. [msg:2104][msg:2108]"
+    },
+    {
+      "id": 10,
+      "name": "Theo Martin",
+      "email": "theo@quietstack.example",
+      "aliases": [],
+      "note": "Infrastructure advisor",
+      "summary": "Theo Martin is an infrastructure advisor focused on local service hardening. In the reliability group with Jon Bell and Owen Brooks, he turns backup, observability, and recovery concerns into tested operating procedures. [msg:2037][msg:2048][msg:2109][msg:2112][msg:2114]",
+      "facet": "Theo owns resilience practices while Jon covers migrations and Owen validates recovery and rollup behavior. [msg:2112][msg:2114]"
+    },
+    {
+      "id": 11,
+      "name": "Maya Chen",
+      "email": "maya.lee@northstar-labs.example",
+      "aliases": [],
+      "note": "Northstar Labs account pending identity review",
+      "summary": "This Northstar Labs profile appears in the same Atlas citation and edit-ownership discussions as Maya Chen, alongside Jon Bell and Nora Kim. [msg:2122][msg:2123][msg:2124][msg:2125]",
+      "facet": "The address has an Atlas-specific history and a social neighborhood matching Maya Chen's core collaborators. [msg:2122][msg:2124]"
+    },
+    {
+      "id": 12,
+      "name": "Priya Raman",
+      "email": "priya.raman@lantern-research.example",
+      "aliases": [],
+      "note": "Lantern Research institute account pending identity review",
+      "summary": "This institute profile participates in the same evidence-boundary and retrieval-synthesis work as Priya Raman, with Leah Park and Owen Brooks. [msg:2126][msg:2127][msg:2128][msg:2129]",
+      "facet": "The address shares Priya Raman's research and editorial neighborhood but remains separate for merge review. [msg:2126][msg:2128]"
+    }
+  ],
+  "projects": [
+    {
+      "id": 1,
+      "slug": "atlas-workspace",
+      "name": "Atlas Workspace",
+      "started_at": "2025-08-05",
+      "message_ids": [
+        2041,
+        2042,
+        2043,
+        2044,
+        2091,
+        2092,
+        2093,
+        2094,
+        2095,
+        2096
+      ],
+      "members": [
+        [
+          1,
+          "Product lead"
+        ],
+        [
+          2,
+          "Engineering partner"
+        ],
+        [
+          5,
+          "Design collaborator"
+        ]
+      ],
+      "summary": "Atlas Workspace is the product effort that shaped Memento's dimensional, source-attributed interface. Its core group repeatedly reviews citation placement, user-edit ownership, and prototype scope. [msg:2041][msg:2043][msg:2091][msg:2094][msg:2096]"
+    },
+    {
+      "id": 2,
+      "slug": "harbor-salon",
+      "name": "Harbor Knowledge Salon",
+      "started_at": "2025-02-18",
+      "message_ids": [
+        2045,
+        2046,
+        2047,
+        2103,
+        2104,
+        2105,
+        2106,
+        2107,
+        2108
+      ],
+      "members": [
+        [
+          6,
+          "Operations"
+        ],
+        [
+          9,
+          "Program lead"
+        ]
+      ],
+      "summary": "The Harbor Knowledge Salon brought local organizers together to exchange archive-backed stories and practices, with recurring coordination across programming, operations, mentors, and participant follow-up. [msg:2045][msg:2046][msg:2103][msg:2106][msg:2108]"
+    },
+    {
+      "id": 3,
+      "slug": "archive-resilience",
+      "name": "Archive Resilience Sprint",
+      "started_at": "2026-01-09",
+      "message_ids": [
+        2048,
+        2049,
+        2050,
+        2109,
+        2110,
+        2111,
+        2112,
+        2113,
+        2114
+      ],
+      "members": [
+        [
+          8,
+          "Data validation"
+        ],
+        [
+          10,
+          "Infrastructure"
+        ]
+      ],
+      "summary": "The Archive Resilience Sprint tested backup, restore, migrations, and rollup validation without mutating source mail. Jon, Owen, and Theo revisited the procedures through multiple working-group checkpoints. [msg:2048][msg:2049][msg:2109][msg:2111][msg:2114]"
+    }
+  ],
+  "concepts": [
+    {
+      "id": 1,
+      "slug": "local-first-memory",
+      "name": "Local-first Memory",
+      "scope": "How durable local archives become source-attributed memory surfaces.",
+      "keywords": [
+        "local-first",
+        "archive",
+        "citations"
+      ],
+      "message_ids": [
+        2005,
+        2006,
+        2041,
+        2044,
+        2050,
+        2091,
+        2094,
+        2109,
+        2114
+      ],
+      "summary": "Local-first memory keeps durable source material on the user's machine while allowing relationship, project, and reliability views to be rebuilt from cited correspondence. [msg:2005][msg:2041][msg:2091][msg:2109][msg:2114]"
+    },
+    {
+      "id": 2,
+      "slug": "source-aware-writing",
+      "name": "Source-aware Writing",
+      "scope": "Writing practices that preserve provenance from notes and correspondence.",
+      "keywords": [
+        "sources",
+        "citations",
+        "writing"
+      ],
+      "message_ids": [
+        2025,
+        2026,
+        2029,
+        2030,
+        2043,
+        2097,
+        2099,
+        2101,
+        2102
+      ],
+      "summary": "Source-aware writing treats citations as part of drafting and synthesis, with researchers, editors, and data collaborators checking interpretation against the underlying thread. [msg:2025][msg:2043][msg:2097][msg:2099][msg:2101]"
+    },
+    {
+      "id": 3,
+      "slug": "relationship-context",
+      "name": "Relationship Context",
+      "scope": "Longitudinal context for understanding collaboration and shared history.",
+      "keywords": [
+        "relationships",
+        "history",
+        "context"
+      ],
+      "message_ids": [
+        2001,
+        2002,
+        2009,
+        2010,
+        2033,
+        2034,
+        2091,
+        2097,
+        2103,
+        2109
+      ],
+      "summary": "Relationship context emerges from bidirectional history and from recurring shared threads that reveal who collaborates, who bridges groups, and how responsibilities evolve. [msg:2001][msg:2009][msg:2033][msg:2091][msg:2097][msg:2103][msg:2109]"
+    }
+  ],
+  "newsletters": [
+    {
+      "email": "dispatch@localcurrent.example",
+      "sections": {
+        "coverage_summary": "Local Current surveys practical local-first software, durable files, and user-owned archives. [msg:2051][msg:2060]",
+        "recurring_themes": "[{\"theme\":\"Durable local software\",\"source_message_ids\":[2051,2055,2060]}]",
+        "notable_recent": "[{\"headline\":\"A field guide to user-owned archives\",\"date\":\"2025-08-10\",\"source_message_ids\":[2060]}]"
+      }
+    },
+    {
+      "email": "briefing@signalweekly.example",
+      "sections": {
+        "coverage_summary": "Signal Weekly follows research on retrieval, synthesis, and source-aware knowledge systems. [msg:2071][msg:2080]",
+        "recurring_themes": "[{\"theme\":\"Retrieval and synthesis\",\"source_message_ids\":[2071,2075,2080]}]",
+        "notable_recent": "[{\"headline\":\"Why provenance changes synthesis\",\"date\":\"2025-08-10\",\"source_message_ids\":[2080]}]"
+      }
+    }
+  ]
+}

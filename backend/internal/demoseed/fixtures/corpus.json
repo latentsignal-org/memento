@@ -1,0 +1,1095 @@
+{
+  "owner": {
+    "name": "Alex Morgan",
+    "email": "alex@memorybox.example"
+  },
+  "participants": [
+    {
+      "id": 1,
+      "email": "alex@memorybox.example",
+      "name": "Alex Morgan"
+    },
+    {
+      "id": 101,
+      "email": "maya@northstar.example",
+      "name": "Maya Chen"
+    },
+    {
+      "id": 102,
+      "email": "jon@fieldnote.example",
+      "name": "Jon Bell"
+    },
+    {
+      "id": 103,
+      "email": "priya@lantern.example",
+      "name": "Priya Raman"
+    },
+    {
+      "id": 104,
+      "email": "eli@harbor.example",
+      "name": "Eli Torres"
+    },
+    {
+      "id": 105,
+      "email": "nora@papertrail.example",
+      "name": "Nora Kim"
+    },
+    {
+      "id": 106,
+      "email": "sam@switchyard.example",
+      "name": "Sam Okafor"
+    },
+    {
+      "id": 107,
+      "email": "leah@softsignal.example",
+      "name": "Leah Park"
+    },
+    {
+      "id": 108,
+      "email": "owen@maproom.example",
+      "name": "Owen Brooks"
+    },
+    {
+      "id": 109,
+      "email": "inez@commonthread.example",
+      "name": "Inez Silva"
+    },
+    {
+      "id": 110,
+      "email": "theo@quietstack.example",
+      "name": "Theo Martin"
+    },
+    {
+      "id": 111,
+      "email": "maya.chen@northstar.example",
+      "name": "Maya Chen"
+    },
+    {
+      "id": 112,
+      "email": "priya.r@lantern.example",
+      "name": "Priya Raman"
+    },
+    {
+      "id": 113,
+      "email": "nora.kim@papertrail.example",
+      "name": "Nora Kim"
+    },
+    {
+      "id": 201,
+      "email": "dispatch@localcurrent.example",
+      "name": "Local Current"
+    },
+    {
+      "id": 202,
+      "email": "briefing@signalweekly.example",
+      "name": "Signal Weekly"
+    }
+  ],
+  "messages": [
+    {
+      "id": 2001,
+      "conversation": 3000,
+      "sent_at": "2024-07-08T09:30:00Z",
+      "sender": 1,
+      "to": [
+        101
+      ],
+      "subject": "Northstar planning",
+      "body": "Hi Maya, I reviewed roadmap for the Atlas workspace. Let us align on product decisions and customer interviews and keep each decision tied to the source thread."
+    },
+    {
+      "id": 2002,
+      "conversation": 3000,
+      "sent_at": "2024-09-16T16:00:00Z",
+      "sender": 101,
+      "to": [
+        1
+      ],
+      "subject": "Re: Northstar planning",
+      "body": "Thanks Alex. I added concrete notes about product decisions and customer interviews. The next checkpoint for roadmap for the Atlas workspace is ready, and I included the context we will need later."
+    },
+    {
+      "id": 2003,
+      "conversation": 3000,
+      "sent_at": "2025-01-22T09:30:00Z",
+      "sender": 1,
+      "to": [
+        101
+      ],
+      "subject": "Re: Northstar planning",
+      "body": "Hi Maya, I reviewed roadmap for the Atlas workspace. Let us align on product decisions and customer interviews and keep each decision tied to the source thread."
+    },
+    {
+      "id": 2004,
+      "conversation": 3000,
+      "sent_at": "2025-06-11T16:00:00Z",
+      "sender": 101,
+      "to": [
+        1
+      ],
+      "subject": "Re: Northstar planning",
+      "body": "Thanks Alex. I added concrete notes about product decisions and customer interviews. The next checkpoint for roadmap for the Atlas workspace is ready, and I included the context we will need later."
+    },
+    {
+      "id": 2005,
+      "conversation": 3001,
+      "sent_at": "2024-07-08T09:30:00Z",
+      "sender": 1,
+      "to": [
+        102
+      ],
+      "subject": "Fieldnote architecture",
+      "body": "Hi Jon, I reviewed the local indexing service. Let us align on schema boundaries and migration safety and keep each decision tied to the source thread."
+    },
+    {
+      "id": 2006,
+      "conversation": 3001,
+      "sent_at": "2024-09-16T16:00:00Z",
+      "sender": 102,
+      "to": [
+        1
+      ],
+      "subject": "Re: Fieldnote architecture",
+      "body": "Thanks Alex. I added concrete notes about schema boundaries and migration safety. The next checkpoint for the local indexing service is ready, and I included the context we will need later."
+    },
+    {
+      "id": 2007,
+      "conversation": 3001,
+      "sent_at": "2025-01-22T09:30:00Z",
+      "sender": 1,
+      "to": [
+        102
+      ],
+      "subject": "Re: Fieldnote architecture",
+      "body": "Hi Jon, I reviewed the local indexing service. Let us align on schema boundaries and migration safety and keep each decision tied to the source thread."
+    },
+    {
+      "id": 2008,
+      "conversation": 3001,
+      "sent_at": "2025-06-11T16:00:00Z",
+      "sender": 102,
+      "to": [
+        1
+      ],
+      "subject": "Re: Fieldnote architecture",
+      "body": "Thanks Alex. I added concrete notes about schema boundaries and migration safety. The next checkpoint for the local indexing service is ready, and I included the context we will need later."
+    },
+    {
+      "id": 2009,
+      "conversation": 3002,
+      "sent_at": "2024-07-08T09:30:00Z",
+      "sender": 1,
+      "to": [
+        103
+      ],
+      "subject": "Lantern research",
+      "body": "Hi Priya, I reviewed longitudinal memory studies. Let us align on research synthesis and participant notes and keep each decision tied to the source thread."
+    },
+    {
+      "id": 2010,
+      "conversation": 3002,
+      "sent_at": "2024-09-16T16:00:00Z",
+      "sender": 103,
+      "to": [
+        1
+      ],
+      "subject": "Re: Lantern research",
+      "body": "Thanks Alex. I added concrete notes about research synthesis and participant notes. The next checkpoint for longitudinal memory studies is ready, and I included the context we will need later."
+    },
+    {
+      "id": 2011,
+      "conversation": 3002,
+      "sent_at": "2025-01-22T09:30:00Z",
+      "sender": 1,
+      "to": [
+        103
+      ],
+      "subject": "Re: Lantern research",
+      "body": "Hi Priya, I reviewed longitudinal memory studies. Let us align on research synthesis and participant notes and keep each decision tied to the source thread."
+    },
+    {
+      "id": 2012,
+      "conversation": 3002,
+      "sent_at": "2025-06-11T16:00:00Z",
+      "sender": 103,
+      "to": [
+        1
+      ],
+      "subject": "Re: Lantern research",
+      "body": "Thanks Alex. I added concrete notes about research synthesis and participant notes. The next checkpoint for longitudinal memory studies is ready, and I included the context we will need later."
+    },
+    {
+      "id": 2013,
+      "conversation": 3003,
+      "sent_at": "2024-07-08T09:30:00Z",
+      "sender": 1,
+      "to": [
+        104
+      ],
+      "subject": "Harbor gatherings",
+      "body": "Hi Eli, I reviewed the neighborhood knowledge salon. Let us align on speakers, venue details, and follow-up and keep each decision tied to the source thread."
+    },
+    {
+      "id": 2014,
+      "conversation": 3003,
+      "sent_at": "2024-09-16T16:00:00Z",
+      "sender": 104,
+      "to": [
+        1
+      ],
+      "subject": "Re: Harbor gatherings",
+      "body": "Thanks Alex. I added concrete notes about speakers, venue details, and follow-up. The next checkpoint for the neighborhood knowledge salon is ready, and I included the context we will need later."
+    },
+    {
+      "id": 2015,
+      "conversation": 3003,
+      "sent_at": "2025-01-22T09:30:00Z",
+      "sender": 1,
+      "to": [
+        104
+      ],
+      "subject": "Re: Harbor gatherings",
+      "body": "Hi Eli, I reviewed the neighborhood knowledge salon. Let us align on speakers, venue details, and follow-up and keep each decision tied to the source thread."
+    },
+    {
+      "id": 2016,
+      "conversation": 3003,
+      "sent_at": "2025-06-11T16:00:00Z",
+      "sender": 104,
+      "to": [
+        1
+      ],
+      "subject": "Re: Harbor gatherings",
+      "body": "Thanks Alex. I added concrete notes about speakers, venue details, and follow-up. The next checkpoint for the neighborhood knowledge salon is ready, and I included the context we will need later."
+    },
+    {
+      "id": 2017,
+      "conversation": 3004,
+      "sent_at": "2024-07-08T09:30:00Z",
+      "sender": 1,
+      "to": [
+        105
+      ],
+      "subject": "Papertrail design",
+      "body": "Hi Nora, I reviewed the relationship page redesign. Let us align on reading rhythm, citations, and navigation and keep each decision tied to the source thread."
+    },
+    {
+      "id": 2018,
+      "conversation": 3004,
+      "sent_at": "2024-09-16T16:00:00Z",
+      "sender": 105,
+      "to": [
+        1
+      ],
+      "subject": "Re: Papertrail design",
+      "body": "Thanks Alex. I added concrete notes about reading rhythm, citations, and navigation. The next checkpoint for the relationship page redesign is ready, and I included the context we will need later."
+    },
+    {
+      "id": 2019,
+      "conversation": 3004,
+      "sent_at": "2025-01-22T09:30:00Z",
+      "sender": 1,
+      "to": [
+        105
+      ],
+      "subject": "Re: Papertrail design",
+      "body": "Hi Nora, I reviewed the relationship page redesign. Let us align on reading rhythm, citations, and navigation and keep each decision tied to the source thread."
+    },
+    {
+      "id": 2020,
+      "conversation": 3004,
+      "sent_at": "2025-06-11T16:00:00Z",
+      "sender": 105,
+      "to": [
+        1
+      ],
+      "subject": "Re: Papertrail design",
+      "body": "Thanks Alex. I added concrete notes about reading rhythm, citations, and navigation. The next checkpoint for the relationship page redesign is ready, and I included the context we will need later."
+    },
+    {
+      "id": 2021,
+      "conversation": 3005,
+      "sent_at": "2024-07-08T09:30:00Z",
+      "sender": 1,
+      "to": [
+        106
+      ],
+      "subject": "Switchyard operations",
+      "body": "Hi Sam, I reviewed the archive import playbook. Let us align on runbooks, support load, and rollout checks and keep each decision tied to the source thread."
+    },
+    {
+      "id": 2022,
+      "conversation": 3005,
+      "sent_at": "2024-09-16T16:00:00Z",
+      "sender": 106,
+      "to": [
+        1
+      ],
+      "subject": "Re: Switchyard operations",
+      "body": "Thanks Alex. I added concrete notes about runbooks, support load, and rollout checks. The next checkpoint for the archive import playbook is ready, and I included the context we will need later."
+    },
+    {
+      "id": 2023,
+      "conversation": 3005,
+      "sent_at": "2025-01-22T09:30:00Z",
+      "sender": 1,
+      "to": [
+        106
+      ],
+      "subject": "Re: Switchyard operations",
+      "body": "Hi Sam, I reviewed the archive import playbook. Let us align on runbooks, support load, and rollout checks and keep each decision tied to the source thread."
+    },
+    {
+      "id": 2024,
+      "conversation": 3005,
+      "sent_at": "2025-06-11T16:00:00Z",
+      "sender": 106,
+      "to": [
+        1
+      ],
+      "subject": "Re: Switchyard operations",
+      "body": "Thanks Alex. I added concrete notes about runbooks, support load, and rollout checks. The next checkpoint for the archive import playbook is ready, and I included the context we will need later."
+    },
+    {
+      "id": 2025,
+      "conversation": 3006,
+      "sent_at": "2024-07-08T09:30:00Z",
+      "sender": 1,
+      "to": [
+        107
+      ],
+      "subject": "Soft Signal essays",
+      "body": "Hi Leah, I reviewed the memory systems essay series. Let us align on editing, examples, and publication timing and keep each decision tied to the source thread."
+    },
+    {
+      "id": 2026,
+      "conversation": 3006,
+      "sent_at": "2024-09-16T16:00:00Z",
+      "sender": 107,
+      "to": [
+        1
+      ],
+      "subject": "Re: Soft Signal essays",
+      "body": "Thanks Alex. I added concrete notes about editing, examples, and publication timing. The next checkpoint for the memory systems essay series is ready, and I included the context we will need later."
+    },
+    {
+      "id": 2027,
+      "conversation": 3006,
+      "sent_at": "2025-01-22T09:30:00Z",
+      "sender": 1,
+      "to": [
+        107
+      ],
+      "subject": "Re: Soft Signal essays",
+      "body": "Hi Leah, I reviewed the memory systems essay series. Let us align on editing, examples, and publication timing and keep each decision tied to the source thread."
+    },
+    {
+      "id": 2028,
+      "conversation": 3006,
+      "sent_at": "2025-06-11T16:00:00Z",
+      "sender": 107,
+      "to": [
+        1
+      ],
+      "subject": "Re: Soft Signal essays",
+      "body": "Thanks Alex. I added concrete notes about editing, examples, and publication timing. The next checkpoint for the memory systems essay series is ready, and I included the context we will need later."
+    },
+    {
+      "id": 2029,
+      "conversation": 3007,
+      "sent_at": "2024-07-08T09:30:00Z",
+      "sender": 1,
+      "to": [
+        108
+      ],
+      "subject": "Maproom analysis",
+      "body": "Hi Owen, I reviewed the correspondence trends model. Let us align on metrics, validation, and interpretation and keep each decision tied to the source thread."
+    },
+    {
+      "id": 2030,
+      "conversation": 3007,
+      "sent_at": "2024-09-16T16:00:00Z",
+      "sender": 108,
+      "to": [
+        1
+      ],
+      "subject": "Re: Maproom analysis",
+      "body": "Thanks Alex. I added concrete notes about metrics, validation, and interpretation. The next checkpoint for the correspondence trends model is ready, and I included the context we will need later."
+    },
+    {
+      "id": 2031,
+      "conversation": 3007,
+      "sent_at": "2025-01-22T09:30:00Z",
+      "sender": 1,
+      "to": [
+        108
+      ],
+      "subject": "Re: Maproom analysis",
+      "body": "Hi Owen, I reviewed the correspondence trends model. Let us align on metrics, validation, and interpretation and keep each decision tied to the source thread."
+    },
+    {
+      "id": 2032,
+      "conversation": 3007,
+      "sent_at": "2025-06-11T16:00:00Z",
+      "sender": 108,
+      "to": [
+        1
+      ],
+      "subject": "Re: Maproom analysis",
+      "body": "Thanks Alex. I added concrete notes about metrics, validation, and interpretation. The next checkpoint for the correspondence trends model is ready, and I included the context we will need later."
+    },
+    {
+      "id": 2033,
+      "conversation": 3008,
+      "sent_at": "2024-07-08T09:30:00Z",
+      "sender": 1,
+      "to": [
+        109
+      ],
+      "subject": "Common Thread program",
+      "body": "Hi Inez, I reviewed the fellowship pilot. Let us align on cohort planning, mentors, and outcomes and keep each decision tied to the source thread."
+    },
+    {
+      "id": 2034,
+      "conversation": 3008,
+      "sent_at": "2024-09-16T16:00:00Z",
+      "sender": 109,
+      "to": [
+        1
+      ],
+      "subject": "Re: Common Thread program",
+      "body": "Thanks Alex. I added concrete notes about cohort planning, mentors, and outcomes. The next checkpoint for the fellowship pilot is ready, and I included the context we will need later."
+    },
+    {
+      "id": 2035,
+      "conversation": 3008,
+      "sent_at": "2025-01-22T09:30:00Z",
+      "sender": 1,
+      "to": [
+        109
+      ],
+      "subject": "Re: Common Thread program",
+      "body": "Hi Inez, I reviewed the fellowship pilot. Let us align on cohort planning, mentors, and outcomes and keep each decision tied to the source thread."
+    },
+    {
+      "id": 2036,
+      "conversation": 3008,
+      "sent_at": "2025-06-11T16:00:00Z",
+      "sender": 109,
+      "to": [
+        1
+      ],
+      "subject": "Re: Common Thread program",
+      "body": "Thanks Alex. I added concrete notes about cohort planning, mentors, and outcomes. The next checkpoint for the fellowship pilot is ready, and I included the context we will need later."
+    },
+    {
+      "id": 2037,
+      "conversation": 3009,
+      "sent_at": "2024-07-08T09:30:00Z",
+      "sender": 1,
+      "to": [
+        110
+      ],
+      "subject": "Quiet Stack reliability",
+      "body": "Hi Theo, I reviewed the local service hardening plan. Let us align on backups, observability, and recovery drills and keep each decision tied to the source thread."
+    },
+    {
+      "id": 2038,
+      "conversation": 3009,
+      "sent_at": "2024-09-16T16:00:00Z",
+      "sender": 110,
+      "to": [
+        1
+      ],
+      "subject": "Re: Quiet Stack reliability",
+      "body": "Thanks Alex. I added concrete notes about backups, observability, and recovery drills. The next checkpoint for the local service hardening plan is ready, and I included the context we will need later."
+    },
+    {
+      "id": 2039,
+      "conversation": 3009,
+      "sent_at": "2025-01-22T09:30:00Z",
+      "sender": 1,
+      "to": [
+        110
+      ],
+      "subject": "Re: Quiet Stack reliability",
+      "body": "Hi Theo, I reviewed the local service hardening plan. Let us align on backups, observability, and recovery drills and keep each decision tied to the source thread."
+    },
+    {
+      "id": 2040,
+      "conversation": 3009,
+      "sent_at": "2025-06-11T16:00:00Z",
+      "sender": 110,
+      "to": [
+        1
+      ],
+      "subject": "Re: Quiet Stack reliability",
+      "body": "Thanks Alex. I added concrete notes about backups, observability, and recovery drills. The next checkpoint for the local service hardening plan is ready, and I included the context we will need later."
+    },
+    {
+      "id": 2041,
+      "conversation": 3100,
+      "sent_at": "2025-08-05T11:00:00Z",
+      "sender": 102,
+      "to": [
+        1,
+        101,
+        105
+      ],
+      "subject": "Atlas workspace kickoff",
+      "body": "We agreed that Atlas will combine relationship notes, project history, and cited source messages in one calm workspace."
+    },
+    {
+      "id": 2042,
+      "conversation": 3100,
+      "sent_at": "2025-08-08T11:00:00Z",
+      "sender": 1,
+      "to": [
+        102,
+        101,
+        105
+      ],
+      "subject": "Re: Atlas workspace kickoff",
+      "body": "I captured the first milestone: stabilize archive reads, then build the People and Projects surfaces."
+    },
+    {
+      "id": 2043,
+      "conversation": 3100,
+      "sent_at": "2025-09-02T11:00:00Z",
+      "sender": 105,
+      "to": [
+        1,
+        101,
+        102
+      ],
+      "subject": "Atlas prototype review",
+      "body": "The prototype needs stronger citation placement and a clearer distinction between generated text and user edits."
+    },
+    {
+      "id": 2044,
+      "conversation": 3100,
+      "sent_at": "2025-11-14T11:00:00Z",
+      "sender": 101,
+      "to": [
+        1,
+        102,
+        105
+      ],
+      "subject": "Atlas beta scope",
+      "body": "The beta scope is now dashboard, people, projects, newsletters, and concepts, with no chronological inbox view."
+    },
+    {
+      "id": 2045,
+      "conversation": 3101,
+      "sent_at": "2025-02-18T11:00:00Z",
+      "sender": 106,
+      "to": [
+        1,
+        109
+      ],
+      "subject": "Harbor salon operations",
+      "body": "Venue, accessibility, and speaker confirmations are complete for the spring knowledge salon."
+    },
+    {
+      "id": 2046,
+      "conversation": 3101,
+      "sent_at": "2025-03-01T11:00:00Z",
+      "sender": 109,
+      "to": [
+        1,
+        106
+      ],
+      "subject": "Re: Harbor salon operations",
+      "body": "The mentor roundtable will become the opening session, followed by small-group archive storytelling."
+    },
+    {
+      "id": 2047,
+      "conversation": 3101,
+      "sent_at": "2025-04-12T11:00:00Z",
+      "sender": 1,
+      "to": [
+        106,
+        109
+      ],
+      "subject": "Harbor salon follow-up",
+      "body": "I summarized attendee feedback and linked the follow-up notes to the original planning messages."
+    },
+    {
+      "id": 2048,
+      "conversation": 3101,
+      "sent_at": "2026-01-09T11:00:00Z",
+      "sender": 110,
+      "to": [
+        1,
+        108
+      ],
+      "subject": "Archive resilience sprint",
+      "body": "The first recovery drill restored the local database and verified that source message IDs remained stable."
+    },
+    {
+      "id": 2049,
+      "conversation": 3102,
+      "sent_at": "2026-02-06T11:00:00Z",
+      "sender": 108,
+      "to": [
+        1,
+        110
+      ],
+      "subject": "Re: Archive resilience sprint",
+      "body": "The validation report now covers backup age, rollup rebuild time, and stale derived data detection."
+    },
+    {
+      "id": 2050,
+      "conversation": 3102,
+      "sent_at": "2026-04-17T11:00:00Z",
+      "sender": 1,
+      "to": [
+        108,
+        110
+      ],
+      "subject": "Archive resilience closeout",
+      "body": "We closed the sprint after documenting restore steps and testing the read-only archive boundary."
+    },
+    {
+      "id": 2051,
+      "conversation": 24100,
+      "sent_at": "2024-01-03T08:00:00Z",
+      "sender": 201,
+      "to": [
+        1
+      ],
+      "subject": "Local Current 1: local-first tools",
+      "body": "Issue 1 explores practical local software, durable files, and user-owned archives. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Local Current."
+    },
+    {
+      "id": 2052,
+      "conversation": 24101,
+      "sent_at": "2024-02-04T08:00:00Z",
+      "sender": 201,
+      "to": [
+        1
+      ],
+      "subject": "Local Current 2: local-first tools",
+      "body": "Issue 2 explores practical local software, durable files, and user-owned archives. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Local Current."
+    },
+    {
+      "id": 2053,
+      "conversation": 24102,
+      "sent_at": "2024-03-05T08:00:00Z",
+      "sender": 201,
+      "to": [
+        1
+      ],
+      "subject": "Local Current 3: local-first tools",
+      "body": "Issue 3 explores practical local software, durable files, and user-owned archives. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Local Current."
+    },
+    {
+      "id": 2054,
+      "conversation": 24103,
+      "sent_at": "2024-04-06T08:00:00Z",
+      "sender": 201,
+      "to": [
+        1
+      ],
+      "subject": "Local Current 4: local-first tools",
+      "body": "Issue 4 explores practical local software, durable files, and user-owned archives. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Local Current."
+    },
+    {
+      "id": 2055,
+      "conversation": 24104,
+      "sent_at": "2024-05-07T08:00:00Z",
+      "sender": 201,
+      "to": [
+        1
+      ],
+      "subject": "Local Current 5: local-first tools",
+      "body": "Issue 5 explores practical local software, durable files, and user-owned archives. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Local Current."
+    },
+    {
+      "id": 2056,
+      "conversation": 24105,
+      "sent_at": "2024-06-08T08:00:00Z",
+      "sender": 201,
+      "to": [
+        1
+      ],
+      "subject": "Local Current 6: local-first tools",
+      "body": "Issue 6 explores practical local software, durable files, and user-owned archives. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Local Current."
+    },
+    {
+      "id": 2057,
+      "conversation": 24106,
+      "sent_at": "2024-07-09T08:00:00Z",
+      "sender": 201,
+      "to": [
+        1
+      ],
+      "subject": "Local Current 7: local-first tools",
+      "body": "Issue 7 explores practical local software, durable files, and user-owned archives. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Local Current."
+    },
+    {
+      "id": 2058,
+      "conversation": 24107,
+      "sent_at": "2024-08-10T08:00:00Z",
+      "sender": 201,
+      "to": [
+        1
+      ],
+      "subject": "Local Current 8: local-first tools",
+      "body": "Issue 8 explores practical local software, durable files, and user-owned archives. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Local Current."
+    },
+    {
+      "id": 2059,
+      "conversation": 24108,
+      "sent_at": "2024-09-11T08:00:00Z",
+      "sender": 201,
+      "to": [
+        1
+      ],
+      "subject": "Local Current 9: local-first tools",
+      "body": "Issue 9 explores practical local software, durable files, and user-owned archives. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Local Current."
+    },
+    {
+      "id": 2060,
+      "conversation": 24109,
+      "sent_at": "2024-10-12T08:00:00Z",
+      "sender": 201,
+      "to": [
+        1
+      ],
+      "subject": "Local Current 10: local-first tools",
+      "body": "Issue 10 explores practical local software, durable files, and user-owned archives. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Local Current."
+    },
+    {
+      "id": 2061,
+      "conversation": 24110,
+      "sent_at": "2024-11-13T08:00:00Z",
+      "sender": 201,
+      "to": [
+        1
+      ],
+      "subject": "Local Current 11: local-first tools",
+      "body": "Issue 11 explores practical local software, durable files, and user-owned archives. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Local Current."
+    },
+    {
+      "id": 2062,
+      "conversation": 24111,
+      "sent_at": "2024-12-14T08:00:00Z",
+      "sender": 201,
+      "to": [
+        1
+      ],
+      "subject": "Local Current 12: local-first tools",
+      "body": "Issue 12 explores practical local software, durable files, and user-owned archives. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Local Current."
+    },
+    {
+      "id": 2063,
+      "conversation": 24112,
+      "sent_at": "2025-01-15T08:00:00Z",
+      "sender": 201,
+      "to": [
+        1
+      ],
+      "subject": "Local Current 13: local-first tools",
+      "body": "Issue 13 explores practical local software, durable files, and user-owned archives. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Local Current."
+    },
+    {
+      "id": 2064,
+      "conversation": 24113,
+      "sent_at": "2025-02-16T08:00:00Z",
+      "sender": 201,
+      "to": [
+        1
+      ],
+      "subject": "Local Current 14: local-first tools",
+      "body": "Issue 14 explores practical local software, durable files, and user-owned archives. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Local Current."
+    },
+    {
+      "id": 2065,
+      "conversation": 24114,
+      "sent_at": "2025-03-17T08:00:00Z",
+      "sender": 201,
+      "to": [
+        1
+      ],
+      "subject": "Local Current 15: local-first tools",
+      "body": "Issue 15 explores practical local software, durable files, and user-owned archives. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Local Current."
+    },
+    {
+      "id": 2066,
+      "conversation": 24115,
+      "sent_at": "2025-04-18T08:00:00Z",
+      "sender": 201,
+      "to": [
+        1
+      ],
+      "subject": "Local Current 16: local-first tools",
+      "body": "Issue 16 explores practical local software, durable files, and user-owned archives. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Local Current."
+    },
+    {
+      "id": 2067,
+      "conversation": 24116,
+      "sent_at": "2025-05-19T08:00:00Z",
+      "sender": 201,
+      "to": [
+        1
+      ],
+      "subject": "Local Current 17: local-first tools",
+      "body": "Issue 17 explores practical local software, durable files, and user-owned archives. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Local Current."
+    },
+    {
+      "id": 2068,
+      "conversation": 24117,
+      "sent_at": "2025-06-20T08:00:00Z",
+      "sender": 201,
+      "to": [
+        1
+      ],
+      "subject": "Local Current 18: local-first tools",
+      "body": "Issue 18 explores practical local software, durable files, and user-owned archives. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Local Current."
+    },
+    {
+      "id": 2069,
+      "conversation": 24118,
+      "sent_at": "2025-07-21T08:00:00Z",
+      "sender": 201,
+      "to": [
+        1
+      ],
+      "subject": "Local Current 19: local-first tools",
+      "body": "Issue 19 explores practical local software, durable files, and user-owned archives. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Local Current."
+    },
+    {
+      "id": 2070,
+      "conversation": 24119,
+      "sent_at": "2025-08-22T08:00:00Z",
+      "sender": 201,
+      "to": [
+        1
+      ],
+      "subject": "Local Current 20: local-first tools",
+      "body": "Issue 20 explores practical local software, durable files, and user-owned archives. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Local Current."
+    },
+    {
+      "id": 2071,
+      "conversation": 24200,
+      "sent_at": "2024-01-03T08:00:00Z",
+      "sender": 202,
+      "to": [
+        1
+      ],
+      "subject": "Signal Weekly 1: knowledge systems",
+      "body": "Issue 1 explores research on retrieval, synthesis, and source-aware writing. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Signal Weekly."
+    },
+    {
+      "id": 2072,
+      "conversation": 24201,
+      "sent_at": "2024-02-04T08:00:00Z",
+      "sender": 202,
+      "to": [
+        1
+      ],
+      "subject": "Signal Weekly 2: knowledge systems",
+      "body": "Issue 2 explores research on retrieval, synthesis, and source-aware writing. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Signal Weekly."
+    },
+    {
+      "id": 2073,
+      "conversation": 24202,
+      "sent_at": "2024-03-05T08:00:00Z",
+      "sender": 202,
+      "to": [
+        1
+      ],
+      "subject": "Signal Weekly 3: knowledge systems",
+      "body": "Issue 3 explores research on retrieval, synthesis, and source-aware writing. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Signal Weekly."
+    },
+    {
+      "id": 2074,
+      "conversation": 24203,
+      "sent_at": "2024-04-06T08:00:00Z",
+      "sender": 202,
+      "to": [
+        1
+      ],
+      "subject": "Signal Weekly 4: knowledge systems",
+      "body": "Issue 4 explores research on retrieval, synthesis, and source-aware writing. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Signal Weekly."
+    },
+    {
+      "id": 2075,
+      "conversation": 24204,
+      "sent_at": "2024-05-07T08:00:00Z",
+      "sender": 202,
+      "to": [
+        1
+      ],
+      "subject": "Signal Weekly 5: knowledge systems",
+      "body": "Issue 5 explores research on retrieval, synthesis, and source-aware writing. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Signal Weekly."
+    },
+    {
+      "id": 2076,
+      "conversation": 24205,
+      "sent_at": "2024-06-08T08:00:00Z",
+      "sender": 202,
+      "to": [
+        1
+      ],
+      "subject": "Signal Weekly 6: knowledge systems",
+      "body": "Issue 6 explores research on retrieval, synthesis, and source-aware writing. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Signal Weekly."
+    },
+    {
+      "id": 2077,
+      "conversation": 24206,
+      "sent_at": "2024-07-09T08:00:00Z",
+      "sender": 202,
+      "to": [
+        1
+      ],
+      "subject": "Signal Weekly 7: knowledge systems",
+      "body": "Issue 7 explores research on retrieval, synthesis, and source-aware writing. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Signal Weekly."
+    },
+    {
+      "id": 2078,
+      "conversation": 24207,
+      "sent_at": "2024-08-10T08:00:00Z",
+      "sender": 202,
+      "to": [
+        1
+      ],
+      "subject": "Signal Weekly 8: knowledge systems",
+      "body": "Issue 8 explores research on retrieval, synthesis, and source-aware writing. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Signal Weekly."
+    },
+    {
+      "id": 2079,
+      "conversation": 24208,
+      "sent_at": "2024-09-11T08:00:00Z",
+      "sender": 202,
+      "to": [
+        1
+      ],
+      "subject": "Signal Weekly 9: knowledge systems",
+      "body": "Issue 9 explores research on retrieval, synthesis, and source-aware writing. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Signal Weekly."
+    },
+    {
+      "id": 2080,
+      "conversation": 24209,
+      "sent_at": "2024-10-12T08:00:00Z",
+      "sender": 202,
+      "to": [
+        1
+      ],
+      "subject": "Signal Weekly 10: knowledge systems",
+      "body": "Issue 10 explores research on retrieval, synthesis, and source-aware writing. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Signal Weekly."
+    },
+    {
+      "id": 2081,
+      "conversation": 24210,
+      "sent_at": "2024-11-13T08:00:00Z",
+      "sender": 202,
+      "to": [
+        1
+      ],
+      "subject": "Signal Weekly 11: knowledge systems",
+      "body": "Issue 11 explores research on retrieval, synthesis, and source-aware writing. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Signal Weekly."
+    },
+    {
+      "id": 2082,
+      "conversation": 24211,
+      "sent_at": "2024-12-14T08:00:00Z",
+      "sender": 202,
+      "to": [
+        1
+      ],
+      "subject": "Signal Weekly 12: knowledge systems",
+      "body": "Issue 12 explores research on retrieval, synthesis, and source-aware writing. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Signal Weekly."
+    },
+    {
+      "id": 2083,
+      "conversation": 24212,
+      "sent_at": "2025-01-15T08:00:00Z",
+      "sender": 202,
+      "to": [
+        1
+      ],
+      "subject": "Signal Weekly 13: knowledge systems",
+      "body": "Issue 13 explores research on retrieval, synthesis, and source-aware writing. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Signal Weekly."
+    },
+    {
+      "id": 2084,
+      "conversation": 24213,
+      "sent_at": "2025-02-16T08:00:00Z",
+      "sender": 202,
+      "to": [
+        1
+      ],
+      "subject": "Signal Weekly 14: knowledge systems",
+      "body": "Issue 14 explores research on retrieval, synthesis, and source-aware writing. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Signal Weekly."
+    },
+    {
+      "id": 2085,
+      "conversation": 24214,
+      "sent_at": "2025-03-17T08:00:00Z",
+      "sender": 202,
+      "to": [
+        1
+      ],
+      "subject": "Signal Weekly 15: knowledge systems",
+      "body": "Issue 15 explores research on retrieval, synthesis, and source-aware writing. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Signal Weekly."
+    },
+    {
+      "id": 2086,
+      "conversation": 24215,
+      "sent_at": "2025-04-18T08:00:00Z",
+      "sender": 202,
+      "to": [
+        1
+      ],
+      "subject": "Signal Weekly 16: knowledge systems",
+      "body": "Issue 16 explores research on retrieval, synthesis, and source-aware writing. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Signal Weekly."
+    },
+    {
+      "id": 2087,
+      "conversation": 24216,
+      "sent_at": "2025-05-19T08:00:00Z",
+      "sender": 202,
+      "to": [
+        1
+      ],
+      "subject": "Signal Weekly 17: knowledge systems",
+      "body": "Issue 17 explores research on retrieval, synthesis, and source-aware writing. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Signal Weekly."
+    },
+    {
+      "id": 2088,
+      "conversation": 24217,
+      "sent_at": "2025-06-20T08:00:00Z",
+      "sender": 202,
+      "to": [
+        1
+      ],
+      "subject": "Signal Weekly 18: knowledge systems",
+      "body": "Issue 18 explores research on retrieval, synthesis, and source-aware writing. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Signal Weekly."
+    },
+    {
+      "id": 2089,
+      "conversation": 24218,
+      "sent_at": "2025-07-21T08:00:00Z",
+      "sender": 202,
+      "to": [
+        1
+      ],
+      "subject": "Signal Weekly 19: knowledge systems",
+      "body": "Issue 19 explores research on retrieval, synthesis, and source-aware writing. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Signal Weekly."
+    },
+    {
+      "id": 2090,
+      "conversation": 24219,
+      "sent_at": "2025-08-22T08:00:00Z",
+      "sender": 202,
+      "to": [
+        1
+      ],
+      "subject": "Signal Weekly 20: knowledge systems",
+      "body": "Issue 20 explores research on retrieval, synthesis, and source-aware writing. It includes a short field note, two implementation examples, and links for further reading. Unsubscribe from Signal Weekly."
+    }
+  ]
+}
+

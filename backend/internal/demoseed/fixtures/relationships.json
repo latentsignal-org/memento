@@ -1,0 +1,407 @@
+{
+  "messages": [
+    {
+      "id": 2091,
+      "conversation": 5000,
+      "sent_at": "2025-10-06T09:15:00Z",
+      "sender": 1,
+      "to": [
+        101,
+        102,
+        105
+      ],
+      "subject": "Atlas design review",
+      "body": "I consolidated the working notes on citation placement, user-edited sections, and the next prototype review. Please check the cited decisions and add any missing context before our next checkpoint."
+    },
+    {
+      "id": 2092,
+      "conversation": 5000,
+      "sent_at": "2025-11-17T15:45:00Z",
+      "sender": 102,
+      "to": [
+        1,
+        101,
+        105
+      ],
+      "subject": "Re: Atlas design review",
+      "body": "I reviewed the shared thread on citation placement, user-edited sections, and the next prototype review. The decisions are accurate; I added one open question and confirmed the follow-up owner."
+    },
+    {
+      "id": 2093,
+      "conversation": 5000,
+      "sent_at": "2026-01-12T09:15:00Z",
+      "sender": 105,
+      "to": [
+        1,
+        101,
+        102
+      ],
+      "subject": "Re: Atlas design review",
+      "body": "I reviewed the shared thread on citation placement, user-edited sections, and the next prototype review. The decisions are accurate; I added one open question and confirmed the follow-up owner."
+    },
+    {
+      "id": 2094,
+      "conversation": 5000,
+      "sent_at": "2026-02-23T15:45:00Z",
+      "sender": 101,
+      "to": [
+        1,
+        102,
+        105
+      ],
+      "subject": "Re: Atlas design review",
+      "body": "I reviewed the shared thread on citation placement, user-edited sections, and the next prototype review. The decisions are accurate; I added one open question and confirmed the follow-up owner."
+    },
+    {
+      "id": 2095,
+      "conversation": 5000,
+      "sent_at": "2026-04-06T09:15:00Z",
+      "sender": 1,
+      "to": [
+        101,
+        102,
+        105
+      ],
+      "subject": "Re: Atlas design review",
+      "body": "I consolidated the working notes on citation placement, user-edited sections, and the next prototype review. Please check the cited decisions and add any missing context before our next checkpoint."
+    },
+    {
+      "id": 2096,
+      "conversation": 5000,
+      "sent_at": "2026-05-18T15:45:00Z",
+      "sender": 105,
+      "to": [
+        1,
+        101,
+        102
+      ],
+      "subject": "Re: Atlas design review",
+      "body": "I reviewed the shared thread on citation placement, user-edited sections, and the next prototype review. The decisions are accurate; I added one open question and confirmed the follow-up owner."
+    },
+    {
+      "id": 2097,
+      "conversation": 5001,
+      "sent_at": "2025-10-06T09:15:00Z",
+      "sender": 1,
+      "to": [
+        103,
+        107,
+        108
+      ],
+      "subject": "Research synthesis circle",
+      "body": "I consolidated the working notes on source-aware writing, retrieval quality, and research synthesis. Please check the cited decisions and add any missing context before our next checkpoint."
+    },
+    {
+      "id": 2098,
+      "conversation": 5001,
+      "sent_at": "2025-11-17T15:45:00Z",
+      "sender": 107,
+      "to": [
+        1,
+        103,
+        108
+      ],
+      "subject": "Re: Research synthesis circle",
+      "body": "I reviewed the shared thread on source-aware writing, retrieval quality, and research synthesis. The decisions are accurate; I added one open question and confirmed the follow-up owner."
+    },
+    {
+      "id": 2099,
+      "conversation": 5001,
+      "sent_at": "2026-01-12T09:15:00Z",
+      "sender": 108,
+      "to": [
+        1,
+        103,
+        107
+      ],
+      "subject": "Re: Research synthesis circle",
+      "body": "I reviewed the shared thread on source-aware writing, retrieval quality, and research synthesis. The decisions are accurate; I added one open question and confirmed the follow-up owner."
+    },
+    {
+      "id": 2100,
+      "conversation": 5001,
+      "sent_at": "2026-02-23T15:45:00Z",
+      "sender": 103,
+      "to": [
+        1,
+        107,
+        108
+      ],
+      "subject": "Re: Research synthesis circle",
+      "body": "I reviewed the shared thread on source-aware writing, retrieval quality, and research synthesis. The decisions are accurate; I added one open question and confirmed the follow-up owner."
+    },
+    {
+      "id": 2101,
+      "conversation": 5001,
+      "sent_at": "2026-04-06T09:15:00Z",
+      "sender": 1,
+      "to": [
+        103,
+        107,
+        108
+      ],
+      "subject": "Re: Research synthesis circle",
+      "body": "I consolidated the working notes on source-aware writing, retrieval quality, and research synthesis. Please check the cited decisions and add any missing context before our next checkpoint."
+    },
+    {
+      "id": 2102,
+      "conversation": 5001,
+      "sent_at": "2026-05-18T15:45:00Z",
+      "sender": 108,
+      "to": [
+        1,
+        103,
+        107
+      ],
+      "subject": "Re: Research synthesis circle",
+      "body": "I reviewed the shared thread on source-aware writing, retrieval quality, and research synthesis. The decisions are accurate; I added one open question and confirmed the follow-up owner."
+    },
+    {
+      "id": 2103,
+      "conversation": 5002,
+      "sent_at": "2025-10-06T09:15:00Z",
+      "sender": 1,
+      "to": [
+        104,
+        106,
+        109
+      ],
+      "subject": "Harbor program planning",
+      "body": "I consolidated the working notes on venue operations, mentor coordination, and participant follow-up. Please check the cited decisions and add any missing context before our next checkpoint."
+    },
+    {
+      "id": 2104,
+      "conversation": 5002,
+      "sent_at": "2025-11-17T15:45:00Z",
+      "sender": 106,
+      "to": [
+        1,
+        104,
+        109
+      ],
+      "subject": "Re: Harbor program planning",
+      "body": "I reviewed the shared thread on venue operations, mentor coordination, and participant follow-up. The decisions are accurate; I added one open question and confirmed the follow-up owner."
+    },
+    {
+      "id": 2105,
+      "conversation": 5002,
+      "sent_at": "2026-01-12T09:15:00Z",
+      "sender": 109,
+      "to": [
+        1,
+        104,
+        106
+      ],
+      "subject": "Re: Harbor program planning",
+      "body": "I reviewed the shared thread on venue operations, mentor coordination, and participant follow-up. The decisions are accurate; I added one open question and confirmed the follow-up owner."
+    },
+    {
+      "id": 2106,
+      "conversation": 5002,
+      "sent_at": "2026-02-23T15:45:00Z",
+      "sender": 104,
+      "to": [
+        1,
+        106,
+        109
+      ],
+      "subject": "Re: Harbor program planning",
+      "body": "I reviewed the shared thread on venue operations, mentor coordination, and participant follow-up. The decisions are accurate; I added one open question and confirmed the follow-up owner."
+    },
+    {
+      "id": 2107,
+      "conversation": 5002,
+      "sent_at": "2026-04-06T09:15:00Z",
+      "sender": 1,
+      "to": [
+        104,
+        106,
+        109
+      ],
+      "subject": "Re: Harbor program planning",
+      "body": "I consolidated the working notes on venue operations, mentor coordination, and participant follow-up. Please check the cited decisions and add any missing context before our next checkpoint."
+    },
+    {
+      "id": 2108,
+      "conversation": 5002,
+      "sent_at": "2026-05-18T15:45:00Z",
+      "sender": 109,
+      "to": [
+        1,
+        104,
+        106
+      ],
+      "subject": "Re: Harbor program planning",
+      "body": "I reviewed the shared thread on venue operations, mentor coordination, and participant follow-up. The decisions are accurate; I added one open question and confirmed the follow-up owner."
+    },
+    {
+      "id": 2109,
+      "conversation": 5003,
+      "sent_at": "2025-10-06T09:15:00Z",
+      "sender": 1,
+      "to": [
+        102,
+        108,
+        110
+      ],
+      "subject": "Archive reliability working group",
+      "body": "I consolidated the working notes on schema migrations, backup drills, and rollup validation. Please check the cited decisions and add any missing context before our next checkpoint."
+    },
+    {
+      "id": 2110,
+      "conversation": 5003,
+      "sent_at": "2025-11-17T15:45:00Z",
+      "sender": 108,
+      "to": [
+        1,
+        102,
+        110
+      ],
+      "subject": "Re: Archive reliability working group",
+      "body": "I reviewed the shared thread on schema migrations, backup drills, and rollup validation. The decisions are accurate; I added one open question and confirmed the follow-up owner."
+    },
+    {
+      "id": 2111,
+      "conversation": 5003,
+      "sent_at": "2026-01-12T09:15:00Z",
+      "sender": 110,
+      "to": [
+        1,
+        102,
+        108
+      ],
+      "subject": "Re: Archive reliability working group",
+      "body": "I reviewed the shared thread on schema migrations, backup drills, and rollup validation. The decisions are accurate; I added one open question and confirmed the follow-up owner."
+    },
+    {
+      "id": 2112,
+      "conversation": 5003,
+      "sent_at": "2026-02-23T15:45:00Z",
+      "sender": 102,
+      "to": [
+        1,
+        108,
+        110
+      ],
+      "subject": "Re: Archive reliability working group",
+      "body": "I reviewed the shared thread on schema migrations, backup drills, and rollup validation. The decisions are accurate; I added one open question and confirmed the follow-up owner."
+    },
+    {
+      "id": 2113,
+      "conversation": 5003,
+      "sent_at": "2026-04-06T09:15:00Z",
+      "sender": 1,
+      "to": [
+        102,
+        108,
+        110
+      ],
+      "subject": "Re: Archive reliability working group",
+      "body": "I consolidated the working notes on schema migrations, backup drills, and rollup validation. Please check the cited decisions and add any missing context before our next checkpoint."
+    },
+    {
+      "id": 2114,
+      "conversation": 5003,
+      "sent_at": "2026-05-18T15:45:00Z",
+      "sender": 110,
+      "to": [
+        1,
+        102,
+        108
+      ],
+      "subject": "Re: Archive reliability working group",
+      "body": "I reviewed the shared thread on schema migrations, backup drills, and rollup validation. The decisions are accurate; I added one open question and confirmed the follow-up owner."
+    },
+    {
+      "id": 2115,
+      "conversation": 5004,
+      "sent_at": "2026-05-20T09:00:00Z",
+      "sender": 1,
+      "to": [
+        101,
+        103,
+        104,
+        106,
+        107
+      ],
+      "subject": "Cross-team memory review",
+      "body": "I pulled together the open decisions from Atlas, the research circle, and Harbor operations. Please confirm which context should remain visible across relationship and project pages."
+    },
+    {
+      "id": 2116,
+      "conversation": 5004,
+      "sent_at": "2026-05-20T11:10:00Z",
+      "sender": 101,
+      "to": [
+        1,
+        103,
+        107
+      ],
+      "subject": "Re: Cross-team memory review",
+      "body": "The product context should preserve the decision, its source, and who changed the direction. Priya and Leah's synthesis notes are a useful model."
+    },
+    {
+      "id": 2117,
+      "conversation": 5004,
+      "sent_at": "2026-05-20T12:05:00Z",
+      "sender": 103,
+      "to": [
+        1,
+        101,
+        107
+      ],
+      "subject": "Re: Cross-team memory review",
+      "body": "For research context, keep the evidence boundary explicit and show where an interpretation came from. Leah can help make that readable without flattening uncertainty."
+    },
+    {
+      "id": 2118,
+      "conversation": 5004,
+      "sent_at": "2026-05-20T13:20:00Z",
+      "sender": 104,
+      "to": [
+        1,
+        106
+      ],
+      "subject": "Re: Cross-team memory review",
+      "body": "For Harbor, the useful context is ownership and follow-through: who made the commitment, what participants were told, and whether the loop closed."
+    },
+    {
+      "id": 2119,
+      "conversation": 5004,
+      "sent_at": "2026-05-20T14:10:00Z",
+      "sender": 106,
+      "to": [
+        1,
+        104
+      ],
+      "subject": "Re: Cross-team memory review",
+      "body": "I agree. Operational memory should retain the runbook decision, the named owner, and the validation step so the next event does not restart from scratch."
+    },
+    {
+      "id": 2120,
+      "conversation": 5004,
+      "sent_at": "2026-05-20T15:00:00Z",
+      "sender": 107,
+      "to": [
+        1,
+        101,
+        103
+      ],
+      "subject": "Re: Cross-team memory review",
+      "body": "I will draft a compact narrative pattern that separates sourced facts, interpretation, and unresolved questions while keeping the citations close to each claim."
+    },
+    {
+      "id": 2121,
+      "conversation": 5004,
+      "sent_at": "2026-05-21T09:30:00Z",
+      "sender": 1,
+      "to": [
+        103,
+        104,
+        107
+      ],
+      "subject": "Re: Cross-team memory review",
+      "body": "I incorporated the research, community, and editorial guidance. The next review will compare the relationship summaries against these source messages."
+    }
+  ]
+}

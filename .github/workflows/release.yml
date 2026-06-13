@@ -1,0 +1,90 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: Backend tests
+        run: cd backend && go test ./...
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: pnpm
+      - name: Frontend build
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+  release:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: pnpm
+      - name: Build static web UI
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+          pnpm stage:webui
+      - name: Build binaries
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME}"
+          mkdir -p dist
+          for target in darwin/arm64 darwin/amd64 linux/amd64 linux/arm64; do
+            GOOS="${target%/*}"; GOARCH="${target#*/}"
+            out="dist/memento_${VERSION}_${GOOS}_${GOARCH}"
+            mkdir -p "$out"
+            (cd backend && CGO_ENABLED=0 GOOS="$GOOS" GOARCH="$GOARCH" \
+              go build -trimpath -ldflags "-s -w" \
+              -o "../$out/memento" ./cmd/memento)
+            cp README.md LICENSE .env.sample "$out/"
+            tar -czf "$out.tar.gz" -C dist "$(basename "$out")"
+            rm -r "$out"
+          done
+          (cd dist && shasum -a 256 *.tar.gz > checksums.txt)
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.tar.gz
+            dist/checksums.txt
+          generate_release_notes: true
+          body: |
+            First run: download the archive for your platform, extract it, and run:
+
+            ```bash
+            ./memento app --demo
+            ```
+
+            Demo mode uses a synthetic local archive and does not require a configured msgvault archive.
+
+            Real archive use requires [msgvault](https://github.com/kenn-io/msgvault) with search support:
+
+            ```bash
+            msgvault stats
+            ./memento app
+            ```
+
+            Recommended for best retrieval: run `msgvault serve` and set `MEMENTO_MSGVAULT_API_URL`.
+            Verify downloads against `checksums.txt`.
