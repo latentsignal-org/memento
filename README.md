@@ -1,21 +1,45 @@
 # Memento
 
-Memento is a local-first knowledge layer over a
-[`msgvault`](https://www.msgvault.io/) email archive. It depends on
-[`kenn-io/msgvault`](https://github.com/kenn-io/msgvault) for mail acquisition,
-archive storage, full-text search, semantic/vector search, and sync. Memento is
-not an email client and does not rebuild your inbox. It turns long-term email
-history into source-attributed memory surfaces:
+Memento turns years of email into source-attributed living documents. It is a
+local-first knowledge layer over a [`msgvault`](https://www.msgvault.io/) email
+archive, built for the long-term signal that ordinary inboxes and keyword
+search leave buried. Memento is not an email client and does not rebuild your
+inbox. It organizes long-term email history into memory surfaces:
 
 - **People**: relationship wikis for meaningful contacts.
 - **Projects**: bounded narratives for user-confirmed work or life projects.
 - **Newsletters**: coverage summaries, recurring themes, and recent items.
 - **Concepts**: user-declared evergreen topics backed by archive sources.
-- **Dashboard**: an overview plus "Ask Memento" chat across your archive.
+- **Home**: an overview plus "Ask Memento" chat across your archive.
+
+Memento depends on [`kenn-io/msgvault`](https://github.com/kenn-io/msgvault)
+for mail acquisition, archive storage, full-text search, semantic/vector
+search, and sync.
 
 [![Watch the Memento demo](https://img.youtube.com/vi/Ms1KeAYCN2A/maxresdefault.jpg)](https://www.youtube.com/watch?v=Ms1KeAYCN2A)
 
 Watch the demo: <https://www.youtube.com/watch?v=Ms1KeAYCN2A>
+
+## What Makes It Different
+
+Memento combines deterministic extraction with agents that know where to look.
+
+- Deterministic extraction runs before LLM calls: canonical contacts, email
+  aliases, newsletter sources, communication rollups, and social context are
+  derived from the archive first.
+- Each dimension has its own agent workflow and prompt. Project, Concept,
+  Person, and Home / Ask Memento workflows search for different evidence because
+  they are building different memory surfaces.
+- Agents use purpose-built tools: full-text search for exact terms, vector
+  search for semantic recall, compact message batches for evidence, thread
+  summaries for long chains, social graph navigation for relationship context,
+  gap detection for missing evidence, and context-status tools before broad
+  expansion.
+- User edits and notes become future context. A corrected narrative section or
+  personal note makes later agent runs more accurate instead of being overwritten
+  by the next generation pass.
+- Generated factual claims are designed to trace back to source messages rather
+  than standing alone as unsourced summaries.
 
 ## How It Works
 
@@ -73,6 +97,19 @@ Install references:
 - msgvault setup: <https://www.msgvault.io/setup/>
 
 ## Quick Start
+
+### For reviewers
+
+Start with the demo mode:
+
+```bash
+./memento app --demo
+```
+
+It uses a populated synthetic archive, requires no real email, and opens the
+main People, Projects, Newsletters, Concepts, and Home surfaces at
+<http://127.0.0.1:8787>. It is the safest way to review the product shape before
+connecting a real `msgvault` archive.
 
 ### From a release binary
 
