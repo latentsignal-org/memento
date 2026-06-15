@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import {usePathname, useRouter} from "next/navigation";
+import {usePathname} from "next/navigation";
 import {useEffect, useRef, useState} from "react";
 import EmailReveal from "@/components/email-reveal";
 import RefreshButton from "@/components/refresh-button";
 import {isPrivacyEnabled, setPrivacyEnabled} from "@/lib/contact-display";
+import {privacyEnabled as readPrivacyEnabled} from "@/lib/api";
 
 interface ApiConfig {
     db_path?: string;
@@ -19,7 +20,6 @@ interface ApiConfig {
 }
 
 export default function AppHeader() {
-    const router = useRouter();
     const pathname = usePathname();
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -27,18 +27,6 @@ export default function AppHeader() {
     const [apiReachable, setApiReachable] = useState<boolean | null>(null);
     const settingsRef = useRef<HTMLDivElement | null>(null);
     const [privacyEnabled, setPrivacyEnabledState] = useState(() => isPrivacyEnabled());
-
-    useEffect(() => {
-        if (apiConfig && apiConfig.privacy_enabled !== undefined) {
-            const serverVal = apiConfig.privacy_enabled;
-            if (serverVal !== isPrivacyEnabled()) {
-                document.cookie = `memento_privacy_enabled=${serverVal}; path=/; max-age=31536000`;
-                setPrivacyEnabled(serverVal);
-                queueMicrotask(() => setPrivacyEnabledState(serverVal));
-                window.location.reload();
-            }
-        }
-    }, [apiConfig, router]);
 
     const handleTogglePrivacy = async (checked: boolean) => {
         setPrivacyEnabledState(checked);
@@ -66,6 +54,18 @@ export default function AppHeader() {
                     return;
                 }
                 const data = (await res.json()) as ApiConfig;
+                if (data.privacy_enabled !== undefined) {
+                    const serverVal = data.privacy_enabled;
+                    const browserVal = readPrivacyEnabled();
+                    if (serverVal !== browserVal) {
+                        document.cookie = `memento_privacy_enabled=${serverVal}; path=/; max-age=31536000`;
+                        setPrivacyEnabled(serverVal);
+                        window.location.reload();
+                        return;
+                    }
+                    setPrivacyEnabled(serverVal);
+                    setPrivacyEnabledState(serverVal);
+                }
                 setApiConfig(data);
                 setApiReachable(true);
             })
