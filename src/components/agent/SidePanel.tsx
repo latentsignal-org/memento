@@ -5,6 +5,7 @@ import ReactMarkdown, {type Components} from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {FileText, Sparkles, X} from "lucide-react";
 import type {AgentEvent} from "./useAgentStream";
+import {MessagePill} from "./AgentChat";
 
 import PersonCard from "./cards/PersonCard";
 import ProjectCard from "./cards/ProjectCard";
@@ -227,6 +228,8 @@ function entityFromToolResult(name: string, result: unknown): ActiveEntity | nul
 }
 
 function FinalAnswerPanel({text}: { text: string }) {
+    const textWithCitationLinks = text.replace(/\[msg:(\d+)\](?!\()/g, "[msg:$1](#msg-$1)");
+
     return (
         <div className="space-y-4">
             <div className="rounded-lg border border-outline-variant/40 bg-surface-container-low p-4">
@@ -247,7 +250,7 @@ function FinalAnswerPanel({text}: { text: string }) {
             <article
                 className="rounded-lg border border-outline-variant/45 bg-background p-4 text-on-surface shadow-xs">
                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents} disallowedElements={["img"]}>
-                    {text}
+                    {textWithCitationLinks}
                 </ReactMarkdown>
             </article>
         </div>
@@ -281,4 +284,32 @@ const markdownComponents: Components = {
     td: ({children}) => (
         <td className="border-t border-outline-variant/25 px-2.5 py-2 align-top text-sm leading-5">{children}</td>
     ),
+    a: ({href, children}) => {
+        if (!href) {
+            return <>{children}</>;
+        }
+        if (href.startsWith("#msg-")) {
+            const messageId = Number.parseInt(href.slice(5), 10);
+            if (Number.isFinite(messageId) && messageId > 0) {
+                return <MessagePill messageId={messageId}/>;
+            }
+        }
+        if (href.startsWith("/")) {
+            return (
+                <a href={href} className="font-semibold text-primary hover:underline">
+                    {children}
+                </a>
+            );
+        }
+        return (
+            <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-primary hover:underline"
+            >
+                {children}
+            </a>
+        );
+    },
 };
