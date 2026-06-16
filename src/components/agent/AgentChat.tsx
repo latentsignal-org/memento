@@ -416,7 +416,19 @@ export function MessagePill({messageId}: { messageId: number }) {
         external_url?: string;
     } | null>(null);
     const [loading, setLoading] = useState(false);
+    const [previewError, setPreviewError] = useState<{ status?: number } | null>(null);
     const [hovered, setHovered] = useState(false);
+    const sourceMissing = previewError?.status === 404;
+    const previewUnavailable = previewError !== null && !sourceMissing;
+    const pillLabel = data?.subject
+        ?? (sourceMissing
+            ? `Message #${messageId} (not found)`
+            : previewUnavailable
+                ? `Message #${messageId} (preview unavailable)`
+                : `Message #${messageId}`);
+    const pillClassName = previewError
+        ? "inline-flex items-center gap-1 rounded border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-700 cursor-pointer transition hover:bg-red-100"
+        : "inline-flex items-center gap-1 rounded bg-primary/10 hover:bg-primary/20 px-2 py-0.5 text-[11px] font-semibold text-primary cursor-pointer transition";
 
     useEffect(() => {
         // Fetch the message once per id. The effect must NOT depend on `data`
@@ -431,17 +443,28 @@ export function MessagePill({messageId}: { messageId: number }) {
         });
         fetch(`/api/messages/${messageId}`)
             .then((r) => {
-                if (!r.ok) throw new Error(`failed to fetch message ${messageId}: ${r.status}`);
+                if (!r.ok) {
+                    if (!cancelled) {
+                        setPreviewError({status: r.status});
+                        setData(null);
+                    }
+                    return null;
+                }
                 return r.json();
             })
             .then((d) => {
-                if (cancelled) return;
+                if (cancelled || !d) return;
                 setData(d);
+                setPreviewError(null);
                 setLoading(false);
             })
-            .catch((err) => {
+            .catch(() => {
                 if (cancelled) return;
-                console.error(err);
+                setPreviewError({});
+                setData(null);
+            })
+            .finally(() => {
+                if (cancelled) return;
                 setLoading(false);
             });
         return () => {
@@ -458,10 +481,10 @@ export function MessagePill({messageId}: { messageId: number }) {
       {/* Click toggles the preview so the pill works on touch screens */}
             <span
                 onClick={() => setHovered((current) => !current)}
-                className="inline-flex items-center gap-1 rounded bg-primary/10 hover:bg-primary/20 px-2 py-0.5 text-[11px] font-semibold text-primary cursor-pointer transition"
+                className={pillClassName}
             >
         <MailOpen className="h-3 w-3 shrink-0"/>
-                {data ? data.subject : `Message #${messageId}`}
+                {pillLabel}
       </span>
 
             {hovered && (
@@ -499,7 +522,17 @@ export function MessagePill({messageId}: { messageId: number }) {
                     )}
               </span>
             ) : (
-                <span className="text-xs text-red-500">Failed to load preview</span>
+                <span className="block space-y-1.5">
+                    <span className="block text-xs font-bold text-on-surface">Message #{messageId}</span>
+                    <span className="block text-xs text-red-700">
+                        {sourceMissing ? "Source message not found." : "Preview unavailable."}
+                    </span>
+                    {previewError?.status ? (
+                        <span className="block text-[10px] font-mono text-on-surface-variant">
+                            HTTP {previewError.status}
+                        </span>
+                    ) : null}
+              </span>
             )}
           </span>
         </span>
