@@ -479,11 +479,10 @@ export function MessagePill({messageId}: { messageId: number }) {
                 <span className="block text-[11px] text-on-surface-variant truncate">
                   From: {data.from_name || data.from_email}
                 </span>
-                    {data.sent_at && (
-                        <span className="block text-[10px] font-mono text-on-surface-variant">
-                    {data.sent_at.slice(0, 16).replace("T", " ")}
+                    <span className="flex items-center justify-between gap-3 text-[10px] font-mono text-on-surface-variant">
+                    <span>{data.sent_at ? data.sent_at.slice(0, 16).replace("T", " ") : ""}</span>
+                    <span className="font-semibold">Message #{messageId}</span>
                   </span>
-                    )}
                     <span
                         className="block text-xs text-on-surface-variant/90 line-clamp-3 bg-surface-container-low p-1.5 rounded border border-outline-variant/40 whitespace-normal leading-normal">
                   {data.snippet}
@@ -569,14 +568,17 @@ const markdownComponents: Components = {
         <td className="border border-outline-variant/40 px-2.5 py-1.5 align-top text-sm">{children}</td>
     ),
     a: ({href, children}) => {
-        // `[msg:N]` is preprocessed into a link with an `msg:N` href below.
-        if (href?.startsWith("msg:")) {
-            const messageId = parseInt(href.slice(4), 10);
-            if (Number.isFinite(messageId)) {
+        if (!href) {
+            return <>{children}</>;
+        }
+        // Citations are preprocessed into hash links; intercept `#msg-N`.
+        if (href.startsWith("#msg-")) {
+            const messageId = Number.parseInt(href.slice(5), 10);
+            if (Number.isFinite(messageId) && messageId > 0) {
                 return <MessagePill messageId={messageId}/>;
             }
         }
-        if (href?.startsWith("/")) {
+        if (href.startsWith("/")) {
             return (
                 <Link href={href} className="font-semibold text-primary hover:underline">
                     {children}
@@ -596,16 +598,18 @@ const markdownComponents: Components = {
     },
 };
 
-function renderText(text: string): React.ReactNode {
+function renderText(text: string, opts: { renderCitations?: boolean } = {}): React.ReactNode {
     if (!text) return "";
-    // Turn bare `[msg:123]` tokens into real markdown links so react-markdown
-    // parses them; the `a` override renders them as MessagePill. The negative
-    // lookahead avoids touching tokens that already carry a `(…)` target.
-    const withMsgLinks = text.replace(/\[msg:(\d+)\](?!\()/g, "[msg:$1](msg:$1)");
+
+    // Turn bare citation tokens into hash links so react-markdown parses them;
+    // the `a` override renders `#msg-N` links as MessagePill.
+    // Example: `[msg:123]` becomes `[msg:123](#msg-123)`.
+    // The negative lookahead avoids touching tokens that already carry a `(…)` target.
+    const textWithCitationLinks = text.replace(/\[msg:(\d+)\](?!\()/g, "[msg:$1](#msg-$1)");
     return (
         <div className="space-y-1.5">
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents} disallowedElements={["img"]}>
-                {withMsgLinks}
+                {opts.renderCitations ? textWithCitationLinks : text}
             </ReactMarkdown>
         </div>
     );
@@ -633,7 +637,7 @@ function TurnView({turn, pending}: { turn: ChatTurn; pending?: boolean }) {
                 )}
                 {(turn.text || (pending && !turn.toolCalls?.length)) ? (
                     <div className="text-sm leading-6">
-                        {turn.text ? renderText(turn.text) : "Thinking…"}
+                        {turn.text ? renderText(turn.text, {renderCitations: !isUser}) : "Thinking…"}
                     </div>
                 ) : (!isUser && !pending && !turn.toolCalls?.length && (
                     <div className="text-sm leading-6 italic text-on-surface-variant">
