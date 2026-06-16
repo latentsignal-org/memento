@@ -246,7 +246,7 @@ function FinalAnswerPanel({text}: { text: string }) {
 
             <article
                 className="rounded-lg border border-outline-variant/45 bg-background p-4 text-on-surface shadow-xs">
-                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents} disallowedElements={["img"]}>
                     {text}
                 </ReactMarkdown>
             </article>

@@ -169,7 +169,7 @@ function MarkdownText({text, compact = false}: { text: string; compact?: boolean
     if (!text) return null;
     return (
         <div className={compact ? "max-w-[820px] text-on-surface-variant" : "text-on-surface"}>
-            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents} disallowedElements={["img"]}>
                 {text}
             </ReactMarkdown>
         </div>

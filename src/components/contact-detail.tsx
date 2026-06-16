@@ -25,6 +25,22 @@ export interface Topic {
     count: string;
 }
 
+// Structured relationship-narrative data. Deliberately not raw HTML: the
+// display name is derived from untrusted email participant data, so rendering
+// it through dangerouslySetInnerHTML would be a stored-injection sink. The
+// component composes these primitives as JSX, which React escapes.
+export interface ContactNarrative {
+    displayName: string;
+    totalMessages: number;
+    inbound: number;
+    outbound: number;
+    monthsSpan: number; // 0 => "a brief period"
+    firstDate: string;
+    lastDate: string;
+    maskedEmail: string;
+    aliasCount: number;
+}
+
 export interface Contact {
     id: string;
     slug: string; // url-safe key for /people/[slug]
@@ -40,7 +56,7 @@ export interface Contact {
     alias: string[];
     sourcesCount: number;
     lastUpdated: string;
-    narrativeHtml: string; // Narrative with citations markers
+    narrative: ContactNarrative;
     reengagementText: string;
     topics: Topic[];
     mutualContacts: string[]; // URLs
@@ -138,10 +154,29 @@ export default function ContactDetail({contact, isOpen, onClose}: ContactDetailP
                             <h3 className="text-label-caps text-on-surface-variant mb-4 pb-2 border-b border-outline-variant">
                                 Relationship Narrative
                             </h3>
-                            <div
-                                className="text-body-reading font-body-reading text-on-surface leading-relaxed mb-6"
-                                dangerouslySetInnerHTML={{__html: contact.narrativeHtml}}
-                            />
+                            <div className="text-body-reading font-body-reading text-on-surface leading-relaxed mb-6">
+                                <p>
+                                    <strong>{contact.narrative.displayName}</strong> is a correspondence contact
+                                    with <strong>{contact.narrative.totalMessages}</strong> total messages in the
+                                    archive, including <strong>{contact.narrative.inbound}</strong> inbound messages
+                                    and <strong>{contact.narrative.outbound}</strong> outbound messages.
+                                </p>
+                                <p>
+                                    Active communication in the archive spans{" "}
+                                    {contact.narrative.monthsSpan ? (
+                                        <>approximately <strong>{contact.narrative.monthsSpan}</strong> months</>
+                                    ) : (
+                                        "a brief period"
+                                    )}
+                                    , from the first recorded contact on {contact.narrative.firstDate} to the most
+                                    recent on {contact.narrative.lastDate}.
+                                </p>
+                                <p>
+                                    All communication occurred via the primary resolved
+                                    address <code>{contact.narrative.maskedEmail}</code> across{" "}
+                                    <strong>{contact.narrative.aliasCount}</strong> identified aliases.
+                                </p>
+                            </div>
                         </article>
 
                         {/* Re-engagement Suggestion */}

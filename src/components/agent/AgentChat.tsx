@@ -594,7 +594,7 @@ function renderText(text: string): React.ReactNode {
     const withMsgLinks = text.replace(/\[msg:(\d+)\](?!\()/g, "[msg:$1](msg:$1)");
     return (
         <div className="space-y-1.5">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents} disallowedElements={["img"]}>
                 {withMsgLinks}
             </ReactMarkdown>
         </div>

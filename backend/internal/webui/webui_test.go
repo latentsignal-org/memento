@@ -1,6 +1,9 @@
 package webui
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"testing/fstest"
 )
@@ -44,5 +47,41 @@ func TestRewriteDynamicSlug(t *testing.T) {
 func TestPlaceholderIsReserved(t *testing.T) {
 	if !reservedSubpaths["_"] {
 		t.Fatal(`"_" must be a reserved subpath`)
+	}
+}
+
+func TestServeHTMLSetsContentSecurityPolicy(t *testing.T) {
+	content := fstest.MapFS{
+		"index.html": {Data: []byte("<!doctype html><html><body>Memento</body></html>")},
+	}
+	rec := httptest.NewRecorder()
+
+	serveHTML(rec, content, "index.html", http.StatusOK)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+	policy := rec.Header().Get("Content-Security-Policy")
+	if policy == "" {
+		t.Fatal("Content-Security-Policy header missing")
+	}
+	for _, want := range []string{
+		"default-src 'self'",
+		"img-src 'self' data: https://www.gravatar.com",
+		"connect-src 'self'",
+		"object-src 'none'",
+		"frame-ancestors 'none'",
+	} {
+		if !strings.Contains(policy, want) {
+			t.Fatalf("Content-Security-Policy = %q, missing %q", policy, want)
+		}
+	}
+	for _, blocked := range []string{
+		"attacker.example",
+		"https://www.google.com/url",
+	} {
+		if strings.Contains(policy, blocked) {
+			t.Fatalf("Content-Security-Policy = %q, unexpectedly allows %q", policy, blocked)
+		}
 	}
 }

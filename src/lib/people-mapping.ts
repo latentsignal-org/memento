@@ -61,11 +61,19 @@ export function mapPersonToContact(person: any, generatedAtStr?: string, privacy
             ))
             : 0;
 
-    const narrativeHtml = `
-    <p><strong>${displayName}</strong> is a correspondence contact with <strong>${person.total_messages || 0}</strong> total messages in the archive, including <strong>${person.from_contact_count || 0}</strong> inbound messages and <strong>${person.to_contact_count || 0}</strong> outbound messages.</p>
-    <p>Active communication in the archive spans ${monthsSpan ? `approximately <strong>${monthsSpan}</strong> months` : "a brief period"}, from the first recorded contact on ${firstDateStr} to the most recent on ${lastDateStr}.</p>
-    <p>All communication occurred via the primary resolved address <code>${maskEmail(person.primary_email, privacyEnabled)}</code> across <strong>${person.aliases ? person.aliases.length : 0}</strong> identified aliases.</p>
-  `;
+    // Structured (not HTML) so the untrusted display name / email are rendered
+    // as React-escaped JSX rather than through dangerouslySetInnerHTML.
+    const narrative: Contact["narrative"] = {
+        displayName,
+        totalMessages: person.total_messages || 0,
+        inbound: person.from_contact_count || 0,
+        outbound: person.to_contact_count || 0,
+        monthsSpan,
+        firstDate: firstDateStr,
+        lastDate: lastDateStr,
+        maskedEmail: maskEmail(person.primary_email, privacyEnabled),
+        aliasCount: person.aliases ? person.aliases.length : 0,
+    };
 
     const topics: Contact["topics"] = [];
     if (person.exclusion_reason) {
@@ -121,7 +129,7 @@ export function mapPersonToContact(person: any, generatedAtStr?: string, privacy
             : [],
         sourcesCount: person.total_messages || 0,
         lastUpdated: generatedAtStr || "local export",
-        narrativeHtml,
+        narrative,
         reengagementText,
         topics,
         mutualContacts,

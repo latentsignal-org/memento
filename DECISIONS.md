@@ -5,6 +5,20 @@ sparse: record choices that affect product behavior, data safety, architecture, 
 interfaces, or long-term maintenance. Do not record routine implementation details,
 temporary plans, TODOs, test notes, or decisions already obvious from code.
 
+## 2026-06-16 — Generated markdown must not trigger arbitrary browser egress
+
+LLM-generated markdown is treated as untrusted content because it can be influenced by
+ingested email/newsletter text. Markdown images are not a supported product feature and
+must be stripped at render sinks. Served HTML documents must also carry a restrictive
+Content-Security-Policy that limits `img-src` and `connect-src` to same-origin browser
+traffic, with only the explicit product exceptions needed for data URLs, Gravatar
+avatars, and Google-hosted Material Symbols font assets.
+
+The same untrusted-content rule forbids rendering archive-derived values through
+`dangerouslySetInnerHTML`. Display names and addresses come from email participant data
+an attacker controls, so generated narratives are passed to the UI as structured data and
+composed as React-escaped JSX, never as pre-built HTML strings.
+
 ## 2026-06-13 — Single-binary distribution: Go serves the static UI
 
 The public repository ships a single Go binary that embeds the statically

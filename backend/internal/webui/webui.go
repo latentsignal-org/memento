@@ -144,9 +144,21 @@ func serveHTML(w http.ResponseWriter, content fs.FS, file string, status int) {
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Content-Security-Policy", cspPolicy)
 	w.WriteHeader(status)
 	_, _ = w.Write(data)
 }
+
+const cspPolicy = "default-src 'self'; " +
+	"script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+	"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+	"img-src 'self' data: https://www.gravatar.com; " +
+	"font-src 'self' data: https://fonts.gstatic.com; " +
+	"connect-src 'self'; " +
+	"object-src 'none'; " +
+	"base-uri 'self'; " +
+	"form-action 'self'; " +
+	"frame-ancestors 'none'"
 
 func pathExists(content fs.FS, p string) bool {
 	_, err := fs.Stat(content, p)
@@ -160,6 +172,7 @@ func servePlaceholder(w http.ResponseWriter) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Content-Security-Policy", cspPolicy)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(data)
 }
