@@ -238,9 +238,20 @@ func (s *Server) logging(next http.Handler) http.Handler {
 		rw := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rw, r)
 		if shouldLogRequest(r) {
-			log.Printf("%s %s -> %d (%s)", r.Method, r.URL.Path, rw.status, time.Since(start))
+			log.Printf("%s %s -> %s (%s)", r.Method, r.URL.Path, statusForLog(rw.status), time.Since(start))
 		}
 	})
+}
+
+func statusForLog(status int) string {
+	switch {
+	case status >= 400:
+		return fmt.Sprintf("\x1b[31m%d\x1b[0m", status)
+	case status >= 200 && status < 300:
+		return fmt.Sprintf("\x1b[32m%d\x1b[0m", status)
+	default:
+		return fmt.Sprintf("%d", status)
+	}
 }
 
 func shouldLogRequest(r *http.Request) bool {
