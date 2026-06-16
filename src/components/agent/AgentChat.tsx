@@ -419,25 +419,35 @@ export function MessagePill({messageId}: { messageId: number }) {
     const [hovered, setHovered] = useState(false);
 
     useEffect(() => {
-        if (!data && !loading) {
-            window.queueMicrotask(() => {
-                setLoading(true);
+        // Fetch the message once per id. The effect must NOT depend on `data`
+        // or `loading`: a failed request leaves `data` null and resets
+        // `loading` to false, which — with those in the dependency array —
+        // re-satisfies the old guard and refetches in an unbounded loop that
+        // hammers /api/messages/:id. A `cancelled` flag avoids a state update
+        // after unmount or a messageId change mid-flight.
+        let cancelled = false;
+        window.queueMicrotask(() => {
+            if (!cancelled) setLoading(true);
+        });
+        fetch(`/api/messages/${messageId}`)
+            .then((r) => {
+                if (!r.ok) throw new Error(`failed to fetch message ${messageId}: ${r.status}`);
+                return r.json();
+            })
+            .then((d) => {
+                if (cancelled) return;
+                setData(d);
+                setLoading(false);
+            })
+            .catch((err) => {
+                if (cancelled) return;
+                console.error(err);
+                setLoading(false);
             });
-            fetch(`/api/messages/${messageId}`)
-                .then((r) => {
-                    if (!r.ok) throw new Error("failed to fetch");
-                    return r.json();
-                })
-                .then((d) => {
-                    setData(d);
-                    setLoading(false);
-                })
-                .catch((err) => {
-                    console.error(err);
-                    setLoading(false);
-                });
-        }
-    }, [messageId, data, loading]);
+        return () => {
+            cancelled = true;
+        };
+    }, [messageId]);
 
     return (
         <span
