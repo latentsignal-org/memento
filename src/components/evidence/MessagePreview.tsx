@@ -52,6 +52,7 @@ export function MessagePreview({
                                    id,
                                    emptyText = "Click a message to inspect the supporting email here.",
                                    locateLabel = "Locate in list",
+                                   showActions = false,
                                }: MessagePreviewProps) {
     const errorMessage = typeof error === "string" ? error : error?.message;
     const errorStatus = typeof error === "string" ? undefined : error?.status;
@@ -93,6 +94,24 @@ export function MessagePreview({
     }
 
     if (layout !== "compact") {
+        if (layout === "inline-expanded") {
+            return (
+                <MessagePreviewInlineExpanded
+                    messageId={messageId}
+                    detail={detail}
+                    summary={summary}
+                    isLoading={isLoading}
+                    errorMessage={errorMessage}
+                    subject={subject}
+                    sentAt={sentAt}
+                    fromLabel={fromLabel}
+                    paragraphs={paragraphs}
+                    expanded={expanded}
+                    setExpanded={setExpandedForCurrentMessage}
+                    showActions={showActions}
+                />
+            );
+        }
         if (layout === "side-panel") {
             return (
                 <MessagePreviewSidePanel
@@ -157,6 +176,82 @@ export function MessagePreview({
                 </span>
             )}
         </span>
+    );
+}
+
+function MessagePreviewInlineExpanded({
+                                          messageId,
+                                          detail,
+                                          summary,
+                                          isLoading,
+                                          errorMessage,
+                                          subject,
+                                          sentAt,
+                                          fromLabel,
+                                          paragraphs,
+                                          expanded,
+                                          setExpanded,
+                                          showActions,
+                                      }: {
+    messageId: number;
+    detail?: MessageDetail | null;
+    summary?: MessageSummary | null;
+    isLoading: boolean;
+    errorMessage?: string;
+    subject: string;
+    sentAt: string;
+    fromLabel: string;
+    paragraphs: ReturnType<typeof buildPreviewParagraphs>;
+    expanded: boolean;
+    setExpanded: (next: (current: boolean) => boolean) => void;
+    showActions?: boolean;
+}) {
+    const displayMessageId = detail?.message_id ?? summary?.messageId ?? messageId;
+    const openLabel = detail?.source_type === "gmail" ? "Open in Gmail" : "Open original";
+
+    return (
+        <div className="rounded-xl border border-outline-variant/35 bg-background p-4 text-on-surface shadow-xs">
+            <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                    <p className="mb-1 text-[10px] uppercase tracking-[0.12em] text-on-surface-variant">
+                        {formatEvidenceLabel(displayMessageId)}
+                    </p>
+                    <h4 className="text-sm font-bold text-primary text-balance">
+                        {maskEmailAddresses(subject || "(No subject)")}
+                    </h4>
+                    <p className="mt-1 text-[11px] text-on-surface-variant">
+                        {maskEmailAddresses(fromLabel)}
+                        {sentAt ? ` · ${formatMonthDay(sentAt)}` : ""}
+                    </p>
+                </div>
+                {showActions && detail?.external_url ? (
+                    <a
+                        href={detail.external_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex shrink-0 items-center rounded-full border border-outline-variant/50 bg-surface-container-high px-3 py-1 text-[11px] font-semibold text-primary hover:bg-primary-fixed/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                    >
+                        {openLabel}
+                    </a>
+                ) : null}
+            </div>
+            <MessagePreviewBody
+                displayMessageId={displayMessageId}
+                isLoading={isLoading}
+                hasDetail={Boolean(detail)}
+                errorMessage={errorMessage}
+                paragraphs={paragraphs}
+            />
+            {paragraphs.truncated ? (
+                <button
+                    type="button"
+                    onClick={() => setExpanded((current) => !current)}
+                    className="mt-4 inline-flex items-center rounded-full bg-surface-container-high px-3 py-1 text-[11px] font-semibold text-primary hover:bg-primary-fixed/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                    {expanded ? "Show less" : "Show more"}
+                </button>
+            ) : null}
+        </div>
     );
 }
 
@@ -272,43 +367,13 @@ function MessagePreviewSidePanel({
                     <span className="inline-block h-2 w-2 rounded-full bg-primary"/>
                     Email excerpt
                 </div>
-                {isLoading && !detail ? (
-                    <p className="text-ui-small text-on-surface-variant">Loading email...</p>
-                ) : errorMessage ? (
-                    <p className="text-ui-small text-destructive">{errorMessage}</p>
-                ) : (
-                    <div className="space-y-3 text-[13px] leading-6 text-on-surface">
-                        {paragraphs.paragraphs.map((paragraph, index) => (
-                            paragraph.startsWith("- ") ? (
-                                <div
-                                    key={`${displayMessageId}-${index}`}
-                                    className="rounded-lg border border-outline-variant/20 bg-surface-container-low px-3 py-2"
-                                >
-                                    <ul className="space-y-1.5">
-                                        {paragraph.split("\n").map((line, lineIndex) => (
-                                            <li
-                                                key={`${displayMessageId}-${index}-${lineIndex}`}
-                                                className="flex items-start gap-2 break-words text-[13px] leading-6 text-on-surface"
-                                            >
-                                                <span className="mt-[9px] h-1.5 w-1.5 rounded-full bg-primary/70"/>
-                                                <span className="[overflow-wrap:anywhere]">
-                                                    {maskEmailAddresses(line.replace(/^- /, ""))}
-                                                </span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            ) : (
-                                <p
-                                    key={`${displayMessageId}-${index}`}
-                                    className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-pretty"
-                                >
-                                    {maskEmailAddresses(paragraph)}
-                                </p>
-                            )
-                        ))}
-                    </div>
-                )}
+                <MessagePreviewBody
+                    displayMessageId={displayMessageId}
+                    isLoading={isLoading}
+                    hasDetail={Boolean(detail)}
+                    errorMessage={errorMessage}
+                    paragraphs={paragraphs}
+                />
                 {paragraphs.truncated ? (
                     <button
                         type="button"
@@ -319,6 +384,60 @@ function MessagePreviewSidePanel({
                     </button>
                 ) : null}
             </div>
+        </div>
+    );
+}
+
+function MessagePreviewBody({
+                                displayMessageId,
+                                isLoading,
+                                hasDetail,
+                                errorMessage,
+                                paragraphs,
+                            }: {
+    displayMessageId: number;
+    isLoading: boolean;
+    hasDetail: boolean;
+    errorMessage?: string;
+    paragraphs: ReturnType<typeof buildPreviewParagraphs>;
+}) {
+    if (isLoading && !hasDetail) {
+        return <p className="text-ui-small text-on-surface-variant">Loading email...</p>;
+    }
+    if (errorMessage) {
+        return <p className="text-ui-small text-destructive">{errorMessage}</p>;
+    }
+    return (
+        <div className="space-y-3 text-[13px] leading-6 text-on-surface">
+            {paragraphs.paragraphs.map((paragraph, index) => (
+                paragraph.startsWith("- ") ? (
+                    <div
+                        key={`${displayMessageId}-${index}`}
+                        className="rounded-lg border border-outline-variant/20 bg-surface-container-low px-3 py-2"
+                    >
+                        <ul className="space-y-1.5">
+                            {paragraph.split("\n").map((line, lineIndex) => (
+                                <li
+                                    key={`${displayMessageId}-${index}-${lineIndex}`}
+                                    className="flex items-start gap-2 break-words text-[13px] leading-6 text-on-surface"
+                                >
+                                    <span className="mt-[9px] h-1.5 w-1.5 rounded-full bg-primary/70"/>
+                                    <span className="[overflow-wrap:anywhere]">
+                                        {maskEmailAddresses(line.replace(/^- /, ""))}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                ) : (
+                    <p
+                        key={`${displayMessageId}-${index}`}
+                        className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-pretty"
+                    >
+                        {maskEmailAddresses(paragraph)}
+                    </p>
+                )
+            ))}
         </div>
     );
 }
