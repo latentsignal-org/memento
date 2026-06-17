@@ -1,6 +1,7 @@
 import type {MouseEvent} from "react";
 import {maskEmailAddresses} from "@/lib/contact-display";
 import {formatEvidenceLabel} from "./labels";
+import {MessageReference} from "./MessageReference";
 
 interface CitationButtonProps {
     messageId: number;
@@ -15,28 +16,27 @@ export function CitationButton({
                                    label,
                                    disabled = false,
                                    onSelect,
-                                   onHover,
                                }: CitationButtonProps) {
+    if (disabled) {
+        return (
+            <span
+                className="px-1.5 py-0.5 mx-0.5 font-mono text-[10px] font-bold rounded transition-all inline-flex items-center align-middle bg-surface-container text-on-surface-variant/40 border border-outline-variant/30 cursor-not-allowed"
+                title={`${formatEvidenceLabel(messageId)} is unavailable on this page`}
+            >
+                [{label ?? messageId}]
+            </span>
+        );
+    }
+
     return (
-        <button
-            type="button"
-            disabled={disabled}
-            onClick={() => !disabled && onSelect?.(messageId)}
-            onMouseEnter={(event) => !disabled && onHover?.(messageId, event)}
-            onMouseLeave={() => !disabled && onHover?.(null, null)}
-            className={`px-1.5 py-0.5 mx-0.5 font-mono text-[10px] font-bold rounded transition-all inline-flex items-center align-middle ${
-                disabled
-                    ? "bg-surface-container text-on-surface-variant/40 border border-outline-variant/30 cursor-not-allowed"
-                    : "bg-[#c4ebde] text-[#00201a] hover:bg-[#a9cec2] border border-[#12362e]/10 cursor-pointer shadow-sm"
-            }`}
-            title={
-                disabled
-                    ? `${formatEvidenceLabel(messageId)} is unavailable on this page`
-                    : `Open ${formatEvidenceLabel(messageId)}`
-            }
-        >
-            [{label ?? messageId}]
-        </button>
+        <MessageReference
+            messageId={messageId}
+            display="citation-number"
+            citationNumber={label ?? messageId}
+            preview="compact"
+            openTarget={onSelect ? "right-panel" : "none"}
+            onOpen={onSelect}
+        />
     );
 }
 

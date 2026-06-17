@@ -81,7 +81,7 @@ type MessageReferenceProps = {
   display: "citation-number" | "subject" | "message-id" | "link-text";
 
   // Required only when display="citation-number".
-  citationNumber?: number;
+  citationNumber?: number | string;
 
   // Optional for display="link-text" or custom fallback copy.
   label?: string;
@@ -482,7 +482,7 @@ Track implementation against this checklist and update it as each task lands.
 - [x] Add `MessagePreview layout="compact"` using the current dimension-page compact-card visual language.
 - [x] Add `MessageReference` with `display`, `preview`, and `openTarget` support.
 - [x] Replace `MessagePill` in Ask Memento, SidePanel, and BackfillCard.
-- [ ] Replace dimension-page citation chips with `MessageReference display="citation-number"`.
+- [x] Replace dimension-page citation chips with `MessageReference display="citation-number"`.
 - [ ] Fold `MessageRow` into `MessagePreview layout="row"`.
 - [ ] Fold `MessagePreviewPanel` into `MessagePreview layout="side-panel"`.
 - [ ] Add `MessagePreview layout="inline-expanded"` where review/group UIs need in-place detail.

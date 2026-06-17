@@ -10,7 +10,7 @@ import {type MessageReferenceError, useMessageReferenceData} from "./useMessageR
 export interface MessageReferenceProps {
     messageId: number;
     display: "citation-number" | "subject" | "message-id" | "link-text";
-    citationNumber?: number;
+    citationNumber?: number | string;
     label?: string;
     preview?: "none" | "compact";
     openTarget?: "none" | "right-panel" | "inline" | "external";
