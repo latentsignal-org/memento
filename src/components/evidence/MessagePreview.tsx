@@ -19,8 +19,6 @@ export interface MessagePreviewProps {
     error?: MessageReferenceError | string | null;
     onOpen?: (messageId: number) => void;
     onLocate?: (messageId: number) => void;
-    externalUrl?: string;
-    initiallyExpanded?: boolean;
     showActions?: boolean;
     selected?: boolean;
     highlighted?: boolean;
@@ -131,7 +129,6 @@ export function MessagePreview({
                 />
             );
         }
-        return <UnsupportedPreviewLayout layout={layout}/>;
     }
 
     return (
@@ -551,13 +548,5 @@ function MessagePreviewRow({
             ) : null}
             {footer ? <div className="mt-2">{footer}</div> : null}
         </div>
-    );
-}
-
-function UnsupportedPreviewLayout({layout}: { layout: MessagePreviewProps["layout"] }) {
-    return (
-        <span className="block rounded border border-outline-variant bg-surface-container-low p-3 text-xs text-on-surface-variant">
-            Message preview layout {layout} is not implemented yet.
-        </span>
     );
 }

@@ -13,7 +13,7 @@ export interface MessageReferenceProps {
     citationNumber?: number | string;
     label?: string;
     preview?: "none" | "compact";
-    openTarget?: "none" | "right-panel" | "inline" | "external";
+    openTarget?: "none" | "right-panel";
     summary?: MessageSummary | null;
     detail?: MessageDetail | null;
     isLoading?: boolean;
@@ -34,7 +34,7 @@ export function MessageReference({
                                      error: controlledError,
                                      onOpen,
                                  }: MessageReferenceProps) {
-    const needsMessageData = display === "subject" || preview === "compact" || openTarget === "external";
+    const needsMessageData = display === "subject" || preview === "compact";
     const fetched = useMessageReferenceData(messageId, {
         enabled: needsMessageData,
         summary,

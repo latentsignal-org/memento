@@ -1,17 +1,15 @@
 "use client";
 
-import type {MouseEvent} from "react";
-import {useEffect, useMemo, useRef, useState} from "react";
+import {useEffect, useMemo, useState} from "react";
 import {useRouter} from "next/navigation";
 import {revalidateEntityPath} from "@/app/actions";
-import CitationHoverCard from "@/components/evidence/CitationHoverCard";
 import {maskEmailAddresses} from "@/lib/contact-display";
 import RefreshButton from "@/components/refresh-button";
 import {formatMonthDay} from "@/lib/date-utils";
 import {buildCitationIndexMap, CitationChipList, EvidenceText,} from "@/components/evidence/EvidenceCitations";
-import MessagePreviewPanel from "@/components/evidence/MessagePreviewPanel";
-import MessageRow from "@/components/evidence/MessageRow";
+import {MessagePreview} from "@/components/evidence/MessagePreview";
 import {bestPreviewExcerpt} from "@/components/evidence/message-utils";
+import type {MessageSummary} from "@/components/evidence/types";
 import {useMessageDetail} from "@/components/evidence/useMessageDetail";
 
 interface NewsletterPageData {
@@ -54,16 +52,27 @@ export default function NewsletterDetailClient({
     }, [data]);
     const narrative = clientData.narrative || {};
     const [highlightedMessageId, setHighlightedMessageId] = useState<number | null>(null);
-    const [hoveredMessageId, setHoveredMessageId] = useState<number | null>(null);
-    const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number } | null>(null);
     const [selectedMessageId, setSelectedMessageId] = useState<number | null>(clientData.timeline[0]?.message_id ?? null);
-    const tooltipHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const timelineById = useMemo(
         () => new Map(clientData.timeline.map((message) => [message.message_id, message])),
         [clientData.timeline],
     );
+    const messageSummaries = useMemo(() => {
+        const map = new Map<number, MessageSummary>();
+        clientData.timeline.forEach((message) => {
+            map.set(message.message_id, {
+                messageId: message.message_id,
+                subject: message.subject,
+                snippet: message.snippet,
+                sentAt: message.sent_at,
+                fromLabel: clientData.source.domain,
+                sourceLabel: clientData.source.domain,
+                directionLabel: "Newsletter",
+            });
+        });
+        return map;
+    }, [clientData.source.domain, clientData.timeline]);
     const selectedMessage = selectedMessageId ? timelineById.get(selectedMessageId) ?? null : null;
-    const hoveredMessage = hoveredMessageId ? timelineById.get(hoveredMessageId) ?? null : null;
     const {detail: selectedMessageDetail, isLoading: selectedMessageLoading, error: selectedMessageError} =
         useMessageDetail(selectedMessageId);
     const coverageIndexMap = useMemo(
@@ -89,41 +98,6 @@ export default function NewsletterDetailClient({
 
     const handleCitationClick = (messageId: number) => {
         setSelectedMessageId(messageId);
-    };
-
-    const clearTooltipHideTimer = () => {
-        if (tooltipHideTimer.current) {
-            clearTimeout(tooltipHideTimer.current);
-            tooltipHideTimer.current = null;
-        }
-    };
-
-    const hideCitationTooltip = () => {
-        clearTooltipHideTimer();
-        setHoveredMessageId(null);
-        setTooltipPos(null);
-    };
-
-    const scheduleCitationTooltipHide = () => {
-        clearTooltipHideTimer();
-        tooltipHideTimer.current = setTimeout(hideCitationTooltip, 180);
-    };
-
-    const handleCitationHover = (
-        messageId: number | null,
-        event: MouseEvent<HTMLButtonElement> | null,
-    ) => {
-        if (messageId === null || !event) {
-            scheduleCitationTooltipHide();
-            return;
-        }
-        clearTooltipHideTimer();
-        const rect = event.currentTarget.getBoundingClientRect();
-        setHoveredMessageId(messageId);
-        setTooltipPos({
-            top: rect.top - 8,
-            left: rect.left + rect.width / 2,
-        });
     };
 
     const locateMessageInTimeline = (messageId: number) => {
@@ -160,7 +134,7 @@ export default function NewsletterDetailClient({
                         text={text}
                         citationIndexMap={coverageIndexMap}
                         onSelect={handleCitationClick}
-                        onHover={handleCitationHover}
+                        messageSummaries={messageSummaries}
                     />
                 </p>
             </div>
@@ -273,7 +247,7 @@ export default function NewsletterDetailClient({
                                     <CitationChipList
                                         messageIds={theme.source_message_ids.slice(0, 6)}
                                         onSelect={handleCitationClick}
-                                        onHover={handleCitationHover}
+                                        messageSummaries={messageSummaries}
                                     />
                                 </div>
                             ))}
@@ -287,13 +261,18 @@ export default function NewsletterDetailClient({
                         {clientData.timeline.map((message) => {
                             const isHighlighted = highlightedMessageId === message.message_id;
                             return (
-                                <MessageRow
+                                <MessagePreview
                                     key={message.message_id}
                                     id={`newsletter-msg-${message.message_id}`}
                                     messageId={message.message_id}
-                                    subject={message.subject}
-                                    snippet={bestPreviewExcerpt(message.subject, message.snippet, message.body_text)}
-                                    dateLabel={formatMonthDay(message.sent_at)}
+                                    layout="row"
+                                    summary={{
+                                        messageId: message.message_id,
+                                        subject: message.subject,
+                                        snippet: bestPreviewExcerpt(message.subject, message.snippet, message.body_text),
+                                        sentAt: message.sent_at,
+                                        dateLabel: formatMonthDay(message.sent_at),
+                                    }}
                                     selected={selectedMessageId === message.message_id}
                                     highlighted={isHighlighted}
                                     badge={{label: "Newsletter", tone: "neutral"}}
@@ -302,7 +281,7 @@ export default function NewsletterDetailClient({
                                             Source: {clientData.source.domain}
                                         </p>
                                     }
-                                    onSelect={() => handleCitationClick(message.message_id)}
+                                    onOpen={() => handleCitationClick(message.message_id)}
                                 />
                             );
                         })}
@@ -331,7 +310,9 @@ export default function NewsletterDetailClient({
                         </div>
                     </div>
 
-                    <MessagePreviewPanel
+                    <MessagePreview
+                        messageId={selectedMessageDetail?.message_id ?? selectedMessage?.message_id ?? 0}
+                        layout="side-panel"
                         detail={selectedMessageDetail}
                         summary={
                             selectedMessage
@@ -348,9 +329,7 @@ export default function NewsletterDetailClient({
                         isLoading={selectedMessageLoading}
                         error={selectedMessageError}
                         emptyText="Click any citation or timeline row to inspect the supporting email here."
-                        onLocate={
-                            selectedMessage ? () => locateMessageInTimeline(selectedMessage.message_id) : null
-                        }
+                        onLocate={selectedMessage ? locateMessageInTimeline : undefined}
                         locateLabel="Locate in timeline"
                     />
                 </div>
@@ -381,7 +360,7 @@ export default function NewsletterDetailClient({
                                     <CitationChipList
                                         messageIds={item.source_message_ids.slice(0, 4)}
                                         onSelect={handleCitationClick}
-                                        onHover={handleCitationHover}
+                                        messageSummaries={messageSummaries}
                                     />
                                 </div>
                             ))}
@@ -390,24 +369,6 @@ export default function NewsletterDetailClient({
                 )}
             </aside>
 
-            {tooltipPos && hoveredMessage ? (
-                <CitationHoverCard
-                    message={{
-                        messageId: hoveredMessage.message_id,
-                        dateLabel: formatMonthDay(hoveredMessage.sent_at),
-                        fromLabel: clientData.source.domain,
-                        subject: hoveredMessage.subject || "(No subject)",
-                        snippet: hoveredMessage.snippet || "",
-                    }}
-                    position={tooltipPos}
-                    onOpen={() => {
-                        handleCitationClick(hoveredMessage.message_id);
-                        hideCitationTooltip();
-                    }}
-                    onKeepOpen={clearTooltipHideTimer}
-                    onCloseSoon={scheduleCitationTooltipHide}
-                />
-            ) : null}
         </div>
     );
 }

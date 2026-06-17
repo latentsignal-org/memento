@@ -91,11 +91,11 @@ type MessageReferenceProps = {
   preview?: "none" | "compact";
 
   // What click or keyboard activation does.
-  openTarget?: "none" | "right-panel" | "inline" | "external";
+  openTarget?: "none" | "right-panel";
 
   // Optional message data when the caller already has it. If this data is not
-  // available, MessageReference may fetch what it needs for the chosen display,
-  // preview, or open target.
+  // available, MessageReference may fetch what it needs for the chosen display
+  // or preview.
   summary?: MessageSummary | null;
   detail?: MessageDetail | null;
   isLoading?: boolean;
@@ -161,7 +161,6 @@ Fetch data when needed for:
 
 1. `display="subject"`, because the subject is the visible label.
 2. `preview="compact"`, because the compact preview needs sender, date, subject, and snippet.
-3. `openTarget="external"`, if an external URL is needed.
 
 Do not fetch just to render `display="citation-number"` with `preview="none"`, because the citation number can be drawn
 from `messageId` and `citationNumber`.
@@ -217,7 +216,6 @@ type NormalizedMessagePreview = {
   fromEmail?: string;
   directionLabel?: string;
   sourceLabel?: string;
-  externalUrl?: string;
   sourceType?: string;
 };
 ```
@@ -243,9 +241,7 @@ type MessagePreviewProps = {
 
   onOpen?: (messageId: number) => void;
   onLocate?: (messageId: number) => void;
-  externalUrl?: string;
 
-  initiallyExpanded?: boolean;
   showActions?: boolean;
 };
 ```
@@ -255,10 +251,10 @@ does not fetch; callers pass summary/detail/error/loading state directly or via 
 
 | Layout | Expected data | Current UI equivalent |
 | --- | --- | --- |
-| `compact` | `summary` preferred, `detail` acceptable | `CitationHoverCard`; AgentChat should adopt this look |
-| `row` | `summary` preferred, `detail` acceptable | Supporting Emails / Message Archive rows via `MessageRow` |
+| `compact` | `summary` preferred, `detail` acceptable | Shared compact hover or tap preview |
+| `row` | `summary` preferred, `detail` acceptable | Supporting Emails / Message Archive rows |
 | `inline-expanded` | `detail` preferred, fallback to summary | Inline "show more" style for review/group contexts |
-| `side-panel` | `detail` preferred, fallback to summary while loading | right-side Supporting email panel via `MessagePreviewPanel` |
+| `side-panel` | `detail` preferred, fallback to summary while loading | right-side Supporting email panel |
 
 Error rendering by layout:
 
@@ -486,7 +482,7 @@ Track implementation against this checklist and update it as each task lands.
 - [x] Fold `MessageRow` into `MessagePreview layout="row"`.
 - [x] Fold `MessagePreviewPanel` into `MessagePreview layout="side-panel"`.
 - [x] Add `MessagePreview layout="inline-expanded"` where review/group UIs need in-place detail.
-- [ ] Delete replaced legacy components after all call sites are migrated.
+- [x] Delete replaced legacy components after all call sites are migrated.
 
 ## 9. Migration plan
 

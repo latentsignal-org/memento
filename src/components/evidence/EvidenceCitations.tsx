@@ -1,14 +1,14 @@
-import type {MouseEvent} from "react";
 import {maskEmailAddresses} from "@/lib/contact-display";
 import {formatEvidenceLabel} from "./labels";
 import {MessageReference} from "./MessageReference";
+import type {MessageSummary} from "./types";
 
 interface CitationButtonProps {
     messageId: number;
     label?: number | string;
     disabled?: boolean;
     onSelect?: (messageId: number) => void;
-    onHover?: (messageId: number | null, event: MouseEvent<HTMLButtonElement> | null) => void;
+    summary?: MessageSummary | null;
 }
 
 export function CitationButton({
@@ -16,6 +16,7 @@ export function CitationButton({
                                    label,
                                    disabled = false,
                                    onSelect,
+                                   summary = null,
                                }: CitationButtonProps) {
     if (disabled) {
         return (
@@ -35,6 +36,7 @@ export function CitationButton({
             citationNumber={label ?? messageId}
             preview="compact"
             openTarget={onSelect ? "right-panel" : "none"}
+            summary={summary}
             onOpen={onSelect}
         />
     );
@@ -44,12 +46,12 @@ export function CitationChipList({
                                      messageIds,
                                      citationIndexMap,
                                      onSelect,
-                                     onHover,
+                                     messageSummaries,
                                  }: {
     messageIds: number[];
     citationIndexMap?: Map<number, number>;
     onSelect?: (messageId: number) => void;
-    onHover?: (messageId: number | null, event: MouseEvent<HTMLButtonElement> | null) => void;
+    messageSummaries?: Map<number, MessageSummary>;
 }) {
     return (
         <div className="flex flex-wrap gap-1.5">
@@ -59,7 +61,7 @@ export function CitationChipList({
                     messageId={messageId}
                     label={citationIndexMap?.get(messageId) ?? messageId}
                     onSelect={onSelect}
-                    onHover={onHover}
+                    summary={messageSummaries?.get(messageId) ?? null}
                 />
             ))}
         </div>
@@ -70,12 +72,12 @@ export function EvidenceText({
                                  text,
                                  citationIndexMap,
                                  onSelect,
-                                 onHover,
+                                 messageSummaries,
                              }: {
     text: string;
     citationIndexMap?: Map<number, number>;
     onSelect?: (messageId: number) => void;
-    onHover?: (messageId: number | null, event: MouseEvent<HTMLButtonElement> | null) => void;
+    messageSummaries?: Map<number, MessageSummary>;
 }) {
     if (!text) {
         return null;
@@ -96,7 +98,7 @@ export function EvidenceText({
                 messageId={messageId}
                 label={citationIndexMap?.get(messageId) ?? messageId}
                 onSelect={onSelect}
-                onHover={onHover}
+                summary={messageSummaries?.get(messageId) ?? null}
             />
         ))}
       </span>
