@@ -138,7 +138,7 @@ export function MessagePreview({
         <span
             role="tooltip"
             aria-label={`Preview ${formatEvidenceLabel(messageId)}`}
-            className="block rounded-xl border border-outline bg-inverse-surface p-4 text-left text-inverse-on-surface shadow-lg"
+            className="block rounded-xl border border-outline bg-inverse-surface p-4 text-left font-sans text-inverse-on-surface shadow-lg transition-all duration-200"
         >
             {isLoading ? (
                 <span className="flex items-center gap-2 text-xs text-inverse-on-surface/80">
