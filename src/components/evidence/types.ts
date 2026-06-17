@@ -26,6 +26,7 @@ export interface MessageSummary {
     subject: string;
     snippet: string;
     sentAt: string;
+    dateLabel?: string;
     fromLabel?: string;
     fromEmail?: string;
     sourceLabel?: string;

@@ -483,7 +483,7 @@ Track implementation against this checklist and update it as each task lands.
 - [x] Add `MessageReference` with `display`, `preview`, and `openTarget` support.
 - [x] Replace `MessagePill` in Ask Memento, SidePanel, and BackfillCard.
 - [x] Replace dimension-page citation chips with `MessageReference display="citation-number"`.
-- [ ] Fold `MessageRow` into `MessagePreview layout="row"`.
+- [x] Fold `MessageRow` into `MessagePreview layout="row"`.
 - [ ] Fold `MessagePreviewPanel` into `MessagePreview layout="side-panel"`.
 - [ ] Add `MessagePreview layout="inline-expanded"` where review/group UIs need in-place detail.
 - [ ] Delete replaced legacy components after all call sites are migrated.

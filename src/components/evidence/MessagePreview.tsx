@@ -1,5 +1,6 @@
 "use client";
 
+import type {KeyboardEvent, MouseEvent, ReactNode} from "react";
 import {LoaderCircle} from "lucide-react";
 import {maskEmailAddresses} from "@/lib/contact-display";
 import {formatEvidenceLabel} from "./labels";
@@ -19,6 +20,15 @@ export interface MessagePreviewProps {
     externalUrl?: string;
     initiallyExpanded?: boolean;
     showActions?: boolean;
+    selected?: boolean;
+    highlighted?: boolean;
+    badge?: {
+        label: string;
+        tone: "inbound" | "outbound" | "neutral";
+    };
+    metadata?: ReactNode;
+    footer?: ReactNode;
+    id?: string;
 }
 
 export function MessagePreview({
@@ -28,19 +38,45 @@ export function MessagePreview({
                                    detail = null,
                                    isLoading = false,
                                    error = null,
+                                   onOpen,
+                                   selected = false,
+                                   highlighted = false,
+                                   badge,
+                                   metadata,
+                                   footer,
+                                   id,
                                }: MessagePreviewProps) {
-    if (layout !== "compact") {
-        return <UnsupportedPreviewLayout layout={layout}/>;
-    }
-
     const errorMessage = typeof error === "string" ? error : error?.message;
     const errorStatus = typeof error === "string" ? undefined : error?.status;
     const subject = detail?.subject || summary?.subject || "";
     const fromLabel = detail?.from_name || summary?.fromLabel || detail?.from_email || summary?.fromEmail || "";
     const sentAt = detail?.sent_at || summary?.sentAt || "";
-    const dateLabel = sentAt ? sentAt.slice(0, 16).replace("T", " ") : "";
+    const dateLabel = summary?.dateLabel || (sentAt ? sentAt.slice(0, 16).replace("T", " ") : "");
     const snippet = bestPreviewExcerpt(subject, detail?.snippet || summary?.snippet, detail?.body_text);
     const directionLabel = summary?.directionLabel;
+
+    if (layout === "row") {
+        return (
+            <MessagePreviewRow
+                id={id}
+                messageId={messageId}
+                subject={subject}
+                snippet={snippet}
+                dateLabel={dateLabel}
+                selected={selected}
+                highlighted={highlighted}
+                badge={badge}
+                metadata={metadata}
+                footer={footer}
+                errorMessage={errorMessage}
+                onOpen={onOpen}
+            />
+        );
+    }
+
+    if (layout !== "compact") {
+        return <UnsupportedPreviewLayout layout={layout}/>;
+    }
 
     return (
         <span
@@ -87,6 +123,118 @@ export function MessagePreview({
     );
 }
 
+const toneClasses = {
+    inbound:
+        "bg-surface-container-low text-on-surface-variant/85 border border-outline-variant/20",
+    outbound:
+        "bg-surface-container-low text-on-surface-variant/85 border border-outline-variant/20",
+    neutral: "bg-surface-container-low text-on-surface-variant/85 border border-outline-variant/20",
+};
+
+function MessagePreviewRow({
+                               id,
+                               messageId,
+                               subject,
+                               snippet,
+                               dateLabel,
+                               selected,
+                               highlighted,
+                               badge,
+                               metadata,
+                               footer,
+                               errorMessage,
+                               onOpen,
+                           }: {
+    id?: string;
+    messageId: number;
+    subject: string;
+    snippet: string;
+    dateLabel: string;
+    selected: boolean;
+    highlighted: boolean;
+    badge?: MessagePreviewProps["badge"];
+    metadata?: ReactNode;
+    footer?: ReactNode;
+    errorMessage?: string;
+    onOpen?: (messageId: number) => void;
+}) {
+    const isNestedInteractiveTarget = (target: EventTarget | null, currentTarget: Element) => {
+        if (!(target instanceof Element)) {
+            return false;
+        }
+        const closestInteractive = target.closest("button, a, input, textarea, select, summary, [role='button']");
+        if (!closestInteractive) {
+            return false;
+        }
+        return closestInteractive !== currentTarget;
+    };
+
+    const handleClick = (event: MouseEvent<HTMLDivElement>) => {
+        if (event.defaultPrevented || isNestedInteractiveTarget(event.target, event.currentTarget)) {
+            return;
+        }
+        onOpen?.(messageId);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+        if (event.defaultPrevented || isNestedInteractiveTarget(event.target, event.currentTarget)) {
+            return;
+        }
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onOpen?.(messageId);
+        }
+    };
+
+    return (
+        <div
+            id={id}
+            role={onOpen ? "button" : undefined}
+            tabIndex={onOpen ? 0 : undefined}
+            onClick={handleClick}
+            onKeyDown={handleKeyDown}
+            className={`w-full rounded-xl border p-4 text-left transition-all duration-300 hover:shadow-md ${
+                selected || highlighted
+                    ? "ring-2 ring-primary/20 bg-primary-fixed/15 border-primary/35 shadow-md"
+                    : "border-outline-variant/30 bg-surface-container-lowest"
+            }`}
+        >
+            <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-1.5">
+                    {badge ? (
+                        <span
+                            className={`inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[9px] font-medium uppercase tracking-[0.07em] ${toneClasses[badge.tone]}`}
+                        >
+                            {badge.label}
+                        </span>
+                    ) : null}
+                    <span
+                        className="rounded-full border border-outline-variant/20 bg-background px-2 py-0.5 text-[10px] font-medium text-on-surface-variant">
+                        {formatEvidenceLabel(messageId)}
+                    </span>
+                </div>
+                <span
+                    className="rounded border border-outline-variant/30 bg-surface-container px-1.5 py-0.5 text-[10px] font-mono font-bold text-on-surface-variant">
+                    {dateLabel}
+                </span>
+            </div>
+
+            <p className="mb-1 text-ui-medium font-bold text-on-surface leading-snug">
+                {maskEmailAddresses(subject || "(no subject)")}
+            </p>
+            {metadata ? <div className="mb-2">{metadata}</div> : null}
+            {errorMessage ? (
+                <p className="text-[11px] text-destructive leading-relaxed">{errorMessage}</p>
+            ) : snippet ? (
+                <p className="text-[11px] text-on-surface-variant leading-relaxed">
+                    {maskEmailAddresses(snippet)}
+                </p>
+            ) : null}
+            {footer ? <div className="mt-2">{footer}</div> : null}
+        </div>
+    );
+}
+
 function UnsupportedPreviewLayout({layout}: { layout: MessagePreviewProps["layout"] }) {
     return (
         <span className="block rounded border border-outline-variant bg-surface-container-low p-3 text-xs text-on-surface-variant">
@@ -94,4 +242,3 @@ function UnsupportedPreviewLayout({layout}: { layout: MessagePreviewProps["layou
         </span>
     );
 }
-
