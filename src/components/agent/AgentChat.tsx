@@ -21,6 +21,7 @@ import type {AgentEvent} from "./useAgentStream";
 import {getToolLabel} from "@/lib/tool-labels";
 import MentionInput from "@/components/agent/MentionInput";
 import type {ContextRef} from "@/lib/context-refs";
+import {MessageReference} from "@/components/evidence/MessageReference";
 
 export interface ChatTurn {
     role: "user" | "assistant";
@@ -406,145 +407,10 @@ function explainAgentError(
     };
 }
 
-export function MessagePill({messageId}: { messageId: number }) {
-    const [data, setData] = useState<{
-        subject: string;
-        from_name: string;
-        from_email: string;
-        sent_at: string;
-        snippet: string;
-        external_url?: string;
-    } | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [previewError, setPreviewError] = useState<{ status?: number } | null>(null);
-    const [hovered, setHovered] = useState(false);
-    const sourceMissing = previewError?.status === 404;
-    const previewUnavailable = previewError !== null && !sourceMissing;
-    const pillLabel = data?.subject
-        ?? (sourceMissing
-            ? `Message #${messageId} (not found)`
-            : previewUnavailable
-                ? `Message #${messageId} (preview unavailable)`
-                : `Message #${messageId}`);
-    const pillClassName = previewError
-        ? "inline-flex items-center gap-1 rounded border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-700 cursor-pointer transition hover:bg-red-100"
-        : "inline-flex items-center gap-1 rounded bg-primary/10 hover:bg-primary/20 px-2 py-0.5 text-[11px] font-semibold text-primary cursor-pointer transition";
-
-    useEffect(() => {
-        // Fetch the message once per id. The effect must NOT depend on `data`
-        // or `loading`: a failed request leaves `data` null and resets
-        // `loading` to false, which — with those in the dependency array —
-        // re-satisfies the old guard and refetches in an unbounded loop that
-        // hammers /api/messages/:id. A `cancelled` flag avoids a state update
-        // after unmount or a messageId change mid-flight.
-        let cancelled = false;
-        window.queueMicrotask(() => {
-            if (!cancelled) setLoading(true);
-        });
-        fetch(`/api/messages/${messageId}`)
-            .then((r) => {
-                if (!r.ok) {
-                    if (!cancelled) {
-                        setPreviewError({status: r.status});
-                        setData(null);
-                    }
-                    return null;
-                }
-                return r.json();
-            })
-            .then((d) => {
-                if (cancelled || !d) return;
-                setData(d);
-                setPreviewError(null);
-                setLoading(false);
-            })
-            .catch(() => {
-                if (cancelled) return;
-                setPreviewError({});
-                setData(null);
-            })
-            .finally(() => {
-                if (cancelled) return;
-                setLoading(false);
-            });
-        return () => {
-            cancelled = true;
-        };
-    }, [messageId]);
-
-    return (
-        <span
-            className="relative inline-block align-baseline mx-0.5"
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => setHovered(false)}
-        >
-      {/* Click toggles the preview so the pill works on touch screens */}
-            <span
-                onClick={() => setHovered((current) => !current)}
-                className={pillClassName}
-            >
-        <MailOpen className="h-3 w-3 shrink-0"/>
-                {pillLabel}
-      </span>
-
-            {hovered && (
-                <span className="absolute left-0 bottom-full z-50 pb-2 w-72 block">
-          <span
-              className="rounded-lg border border-outline-variant bg-surface-container-lowest p-3 shadow-xl text-left block text-on-surface">
-            {loading ? (
-                <span className="flex items-center gap-2 text-xs text-on-surface-variant">
-                <LoaderCircle className="h-3.5 w-3.5 animate-spin"/>
-                Loading preview...
-              </span>
-            ) : data ? (
-                <span className="block space-y-1.5">
-                <span className="block text-xs font-bold truncate">{data.subject}</span>
-                <span className="block text-[11px] text-on-surface-variant truncate">
-                  From: {data.from_name || data.from_email}
-                </span>
-                    <span className="flex items-center justify-between gap-3 text-[10px] font-mono text-on-surface-variant">
-                    <span>{data.sent_at ? data.sent_at.slice(0, 16).replace("T", " ") : ""}</span>
-                    <span className="font-semibold">Message #{messageId}</span>
-                  </span>
-                    <span
-                        className="block text-xs text-on-surface-variant/90 line-clamp-3 bg-surface-container-low p-1.5 rounded border border-outline-variant/40 whitespace-normal leading-normal">
-                  {data.snippet}
-                </span>
-                    {data.external_url && (
-                        <a
-                            href={data.external_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary hover:underline pt-1"
-                        >
-                            Open in Gmail
-                        </a>
-                    )}
-              </span>
-            ) : (
-                <span className="block space-y-1.5">
-                    <span className="block text-xs font-bold text-on-surface">Message #{messageId}</span>
-                    <span className="block text-xs text-red-700">
-                        {sourceMissing ? "Source message not found." : "Preview unavailable."}
-                    </span>
-                    {previewError?.status ? (
-                        <span className="block text-[10px] font-mono text-on-surface-variant">
-                            HTTP {previewError.status}
-                        </span>
-                    ) : null}
-              </span>
-            )}
-          </span>
-        </span>
-            )}
-    </span>
-    );
-}
-
 // Markdown component overrides. We delegate parsing to react-markdown +
 // remark-gfm (which adds tables, strikethrough, task lists, etc.) and only
 // style the output, while preserving the two custom behaviors the chat needs:
-// `[msg:N]` message pills and internal navigation via Next's <Link>.
+// `[msg:N]` message references and internal navigation via Next's <Link>.
 const markdownComponents: Components = {
     p: ({children}) => <p className="text-sm leading-6 mb-3 last:mb-0">{children}</p>,
     ul: ({children}) => <ul className="list-disc pl-5 space-y-1.5 my-2 text-sm leading-6">{children}</ul>,
@@ -608,7 +474,7 @@ const markdownComponents: Components = {
         if (href.startsWith("#msg-")) {
             const messageId = Number.parseInt(href.slice(5), 10);
             if (Number.isFinite(messageId) && messageId > 0) {
-                return <MessagePill messageId={messageId}/>;
+                return <MessageReference messageId={messageId} display="subject" preview="compact"/>;
             }
         }
         if (href.startsWith("/")) {
@@ -635,7 +501,7 @@ function renderText(text: string, opts: { renderCitations?: boolean } = {}): Rea
     if (!text) return "";
 
     // Turn bare citation tokens into hash links so react-markdown parses them;
-    // the `a` override renders `#msg-N` links as MessagePill.
+    // the `a` override renders `#msg-N` links as MessageReference.
     // Example: `[msg:123]` becomes `[msg:123](#msg-123)`.
     // The negative lookahead avoids touching tokens that already carry a `(…)` target.
     const textWithCitationLinks = text.replace(/\[msg:(\d+)\](?!\()/g, "[msg:$1](#msg-$1)");
@@ -674,7 +540,7 @@ function TurnView({turn, pending}: { turn: ChatTurn; pending?: boolean }) {
                     </div>
                 ) : (!isUser && !pending && !turn.toolCalls?.length && (
                     <div className="text-sm leading-6 italic text-on-surface-variant">
-                        Research complete — check the bundle panel on the right.
+                        Research complete - check the bundle panel on the right.
                     </div>
                 ))}
             </div>

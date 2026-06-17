@@ -5,7 +5,7 @@ import ReactMarkdown, {type Components} from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {FileText, Sparkles, X} from "lucide-react";
 import type {AgentEvent} from "./useAgentStream";
-import {MessagePill} from "./AgentChat";
+import {MessageReference} from "@/components/evidence/MessageReference";
 
 import PersonCard from "./cards/PersonCard";
 import ProjectCard from "./cards/ProjectCard";
@@ -291,7 +291,7 @@ const markdownComponents: Components = {
         if (href.startsWith("#msg-")) {
             const messageId = Number.parseInt(href.slice(5), 10);
             if (Number.isFinite(messageId) && messageId > 0) {
-                return <MessagePill messageId={messageId}/>;
+                return <MessageReference messageId={messageId} display="subject" preview="compact"/>;
             }
         }
         if (href.startsWith("/")) {

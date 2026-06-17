@@ -1,17 +1,15 @@
 "use client";
 
-import type {MouseEvent} from "react";
-import {useMemo, useRef, useState} from "react";
+import {useMemo, useState} from "react";
 import Link from "next/link";
 import {useRouter} from "next/navigation";
 import {revalidateEntityPath} from "@/app/actions";
 import ConceptCompileButton from "@/components/agent/ConceptCompileButton";
 import HowThisWasBuiltPanel from "@/components/agent/HowThisWasBuiltPanel";
-import CitationHoverCard from "@/components/evidence/CitationHoverCard";
 import {buildCitationIndexMap, CitationChipList, EvidenceText,} from "@/components/evidence/EvidenceCitations";
 import InspectorTabs from "@/components/evidence/InspectorTabs";
-import MessagePreviewPanel from "@/components/evidence/MessagePreviewPanel";
-import MessageRow from "@/components/evidence/MessageRow";
+import {MessagePreview} from "@/components/evidence/MessagePreview";
+import type {MessageSummary} from "@/components/evidence/types";
 import {useMessageDetail} from "@/components/evidence/useMessageDetail";
 import {contactInitials, displayContactName, maskEmailAddresses} from "@/lib/contact-display";
 import {gravatarUrl} from "@/lib/gravatar";
@@ -88,18 +86,28 @@ export default function ConceptDetailClient({
     const [titleValue, setTitleValue] = useState(concept.name);
     const [titleError, setTitleError] = useState<string | null>(null);
     const [activeRailTab, setActiveRailTab] = useState<"context" | "source">("context");
-    const [hoveredMessageId, setHoveredMessageId] = useState<number | null>(null);
-    const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number } | null>(null);
     const [selectedMessageId, setSelectedMessageId] = useState<number | null>(null);
     const [highlightedMessageId, setHighlightedMessageId] = useState<number | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
-    const tooltipHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const timelineById = useMemo(
         () => new Map(concept.timeline.map((item) => [item.message_id, item])),
         [concept.timeline],
     );
+    const messageSummaries = useMemo(() => {
+        const map = new Map<number, MessageSummary>();
+        concept.timeline.forEach((item) => {
+            map.set(item.message_id, {
+                messageId: item.message_id,
+                subject: item.subject,
+                snippet: item.snippet,
+                sentAt: item.date,
+                fromLabel: item.from_canonical_name,
+                directionLabel: item.is_newsletter ? "Newsletter" : undefined,
+            });
+        });
+        return map;
+    }, [concept.timeline]);
     const selectedMessage = selectedMessageId ? timelineById.get(selectedMessageId) ?? null : null;
-    const hoveredMessage = hoveredMessageId ? timelineById.get(hoveredMessageId) ?? null : null;
     const {detail: selectedMessageDetail, isLoading: selectedMessageLoading, error: selectedMessageError} =
         useMessageDetail(selectedMessageId);
     const hasNarrative =
@@ -120,41 +128,6 @@ export default function ConceptDetailClient({
         if (!messageId) return;
         setSelectedMessageId(messageId);
         setActiveRailTab("source");
-    };
-
-    const clearTooltipHideTimer = () => {
-        if (tooltipHideTimer.current) {
-            clearTimeout(tooltipHideTimer.current);
-            tooltipHideTimer.current = null;
-        }
-    };
-
-    const hideCitationTooltip = () => {
-        clearTooltipHideTimer();
-        setHoveredMessageId(null);
-        setTooltipPos(null);
-    };
-
-    const scheduleCitationTooltipHide = () => {
-        clearTooltipHideTimer();
-        tooltipHideTimer.current = setTimeout(hideCitationTooltip, 180);
-    };
-
-    const handleCitationHover = (
-        messageId: number | null,
-        event: MouseEvent<HTMLButtonElement> | null,
-    ) => {
-        if (messageId === null || !event) {
-            scheduleCitationTooltipHide();
-            return;
-        }
-        clearTooltipHideTimer();
-        const rect = event.currentTarget.getBoundingClientRect();
-        setHoveredMessageId(messageId);
-        setTooltipPos({
-            top: rect.top - 8,
-            left: rect.left + rect.width / 2,
-        });
     };
 
     const locateMessageInMentions = (messageId: number) => {
@@ -345,7 +318,7 @@ export default function ConceptDetailClient({
                                         text={concept.narrative.scope_summary}
                                         citationIndexMap={citationIndexMap}
                                         onSelect={openMessageSource}
-                                        onHover={handleCitationHover}
+                                        messageSummaries={messageSummaries}
                                     />
                                 </p>
                             ) : (
@@ -380,7 +353,7 @@ export default function ConceptDetailClient({
                                                     text={insight.content}
                                                     citationIndexMap={citationIndexMap}
                                                     onSelect={openMessageSource}
-                                                    onHover={handleCitationHover}
+                                                    messageSummaries={messageSummaries}
                                                 />
                                             </p>
                                             {insight.source_message_ids.length > 0 ? (
@@ -389,7 +362,7 @@ export default function ConceptDetailClient({
                                                         messageIds={insight.source_message_ids.slice(0, 8)}
                                                         citationIndexMap={citationIndexMap}
                                                         onSelect={openMessageSource}
-                                                        onHover={handleCitationHover}
+                                                        messageSummaries={messageSummaries}
                                                     />
                                                 </div>
                                             ) : null}
@@ -409,7 +382,7 @@ export default function ConceptDetailClient({
                                         text={concept.narrative.evolving_understanding}
                                         citationIndexMap={citationIndexMap}
                                         onSelect={openMessageSource}
-                                        onHover={handleCitationHover}
+                                        messageSummaries={messageSummaries}
                                     />
                                 </p>
                             </section>
@@ -431,12 +404,17 @@ export default function ConceptDetailClient({
                             <ol className="space-y-3">
                                 {concept.timeline.slice(0, 10).map((item) => (
                                     <li key={item.message_id}>
-                                        <MessageRow
+                                        <MessagePreview
                                             id={`concept-msg-${item.message_id}`}
                                             messageId={item.message_id}
-                                            subject={item.subject}
-                                            snippet={item.snippet}
-                                            dateLabel={formatMonthDay(item.date)}
+                                            layout="row"
+                                            summary={{
+                                                messageId: item.message_id,
+                                                subject: item.subject,
+                                                snippet: item.snippet,
+                                                sentAt: item.date,
+                                                dateLabel: formatMonthDay(item.date),
+                                            }}
                                             selected={selectedMessageId === item.message_id}
                                             highlighted={highlightedMessageId === item.message_id}
                                             badge={{
@@ -455,7 +433,7 @@ export default function ConceptDetailClient({
                                                     )}
                                                 </p>
                                             }
-                                            onSelect={() => openMessageSource(item.message_id)}
+                                            onOpen={() => openMessageSource(item.message_id)}
                                         />
                                     </li>
                                 ))}
@@ -481,7 +459,9 @@ export default function ConceptDetailClient({
                                     <p className="text-[11px] uppercase tracking-[0.14em] text-on-surface-variant mb-2">Source</p>
                                     <h3 className="text-ui-medium font-bold text-primary">Supporting email</h3>
                                 </div>
-                                <MessagePreviewPanel
+                                <MessagePreview
+                                    messageId={selectedMessageDetail?.message_id ?? selectedMessage?.message_id ?? 0}
+                                    layout="side-panel"
                                     detail={selectedMessageDetail}
                                     summary={
                                         selectedMessage
@@ -497,9 +477,7 @@ export default function ConceptDetailClient({
                                     isLoading={selectedMessageLoading}
                                     error={selectedMessageError}
                                     emptyText="Click any citation or mention to inspect the supporting email here."
-                                    onLocate={
-                                        selectedMessage ? () => locateMessageInMentions(selectedMessage.message_id) : null
-                                    }
+                                    onLocate={selectedMessage ? locateMessageInMentions : undefined}
                                     locateLabel="Locate in mentions"
                                 />
                             </div>
@@ -617,26 +595,6 @@ export default function ConceptDetailClient({
                     </aside>
                 </div>
             </div>
-
-            {tooltipPos && hoveredMessage ? (
-                <CitationHoverCard
-                    message={{
-                        messageId: hoveredMessage.message_id,
-                        dateLabel: formatMonthDay(hoveredMessage.date),
-                        fromLabel: hoveredMessage.from_canonical_name,
-                        subject: hoveredMessage.subject || "(No subject)",
-                        snippet: hoveredMessage.snippet || "",
-                        directionLabel: hoveredMessage.is_newsletter ? "Newsletter" : undefined,
-                    }}
-                    position={tooltipPos}
-                    onOpen={() => {
-                        openMessageSource(hoveredMessage.message_id);
-                        hideCitationTooltip();
-                    }}
-                    onKeepOpen={clearTooltipHideTimer}
-                    onCloseSoon={scheduleCitationTooltipHide}
-                />
-            ) : null}
         </main>
     );
 }

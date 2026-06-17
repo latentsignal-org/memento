@@ -1,7 +1,7 @@
 "use client";
 import {useState} from "react";
 import {CheckCircle2, XCircle} from "lucide-react";
-import {MessagePill} from "./AgentChat";
+import {MessageReference} from "@/components/evidence/MessageReference";
 
 interface BackfillCardProps {
     backfillUrl: string;
@@ -83,7 +83,7 @@ export default function BackfillCard({
                             className="h-3.5 w-3.5 rounded border-outline-variant accent-primary"
                         />
                         <span className="flex-1 min-w-0">
-              <MessagePill messageId={id}/>
+              <MessageReference messageId={id} display="subject" preview="compact"/>
             </span>
                     </label>
                 ))}
@@ -101,8 +101,8 @@ export default function BackfillCard({
                         <XCircle className="h-3.5 w-3.5"/>
                     )}
                     {decided === "accept"
-                        ? `${selected.size} message${selected.size === 1 ? "" : "s"} added — agent continuing`
-                        : "Skipped — agent continuing"}
+                        ? `${selected.size} message${selected.size === 1 ? "" : "s"} added - agent continuing`
+                        : "Skipped - agent continuing"}
                 </div>
             ) : (
                 <div className="flex gap-2">

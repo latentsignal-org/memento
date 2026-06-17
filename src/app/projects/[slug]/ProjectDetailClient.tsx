@@ -1,7 +1,6 @@
 "use client";
 
-import type {KeyboardEvent, MouseEvent} from "react";
-import {useMemo, useRef, useState} from "react";
+import {useMemo, useState} from "react";
 import Link from "next/link";
 import {useRouter} from "next/navigation";
 import {revalidateEntityPath} from "@/app/actions";
@@ -11,10 +10,9 @@ import ProjectCompileButton from "@/components/agent/ProjectCompileButton";
 import HowThisWasBuiltPanel from "@/components/agent/HowThisWasBuiltPanel";
 import {formatMonthDay} from "@/lib/date-utils";
 import {buildCitationIndexMap, EvidenceText,} from "@/components/evidence/EvidenceCitations";
-import {formatEvidenceLabel} from "@/components/evidence/labels";
-import MessagePreviewPanel from "@/components/evidence/MessagePreviewPanel";
-import MessageRow from "@/components/evidence/MessageRow";
+import {MessagePreview} from "@/components/evidence/MessagePreview";
 import {bestPreviewExcerpt, normalizePreviewText} from "@/components/evidence/message-utils";
+import type {MessageSummary} from "@/components/evidence/types";
 import {useMessageDetail} from "@/components/evidence/useMessageDetail";
 
 // Interfaces matching the data structure
@@ -135,8 +133,6 @@ export default function ProjectDetailClient({
     const [selectedMemberFilter, setSelectedMemberFilter] = useState<string | null>(null);
 
     // Interaction States
-    const [hoveredMsgId, setHoveredMsgId] = useState<number | null>(null);
-    const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number } | null>(null);
     const [highlightedMsgId, setHighlightedMsgId] = useState<number | null>(null);
     const [selectedMessageId, setSelectedMessageId] = useState<number | null>(
         project.timeline.find((message) => normalizePreviewText(message.body_text || message.snippet))?.message_id ??
@@ -144,13 +140,27 @@ export default function ProjectDetailClient({
         null,
     );
     const [isStreamCollapsed, setIsStreamCollapsed] = useState(false);
-    const tooltipHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Message Map for instant lookups
     const messageMap = useMemo(() => {
         const map = new Map<number, ProjectTimelineItem>();
         project.timeline.forEach((msg) => {
             map.set(msg.message_id, msg);
+        });
+        return map;
+    }, [project.timeline]);
+    const messageSummaries = useMemo(() => {
+        const map = new Map<number, MessageSummary>();
+        project.timeline.forEach((msg) => {
+            map.set(msg.message_id, {
+                messageId: msg.message_id,
+                subject: msg.subject,
+                snippet: msg.snippet,
+                sentAt: msg.date,
+                fromLabel: msg.from_canonical_name,
+                fromEmail: msg.from_email,
+                directionLabel: msg.direction === "from_account" ? "Outbound" : "Inbound",
+            });
         });
         return map;
     }, [project.timeline]);
@@ -195,58 +205,6 @@ export default function ProjectDetailClient({
         setTimeout(() => {
             setHighlightedMsgId((current) => (current === msgId ? null : current));
         }, 3000);
-    };
-
-    const clearTooltipHideTimer = () => {
-        if (tooltipHideTimer.current) {
-            clearTimeout(tooltipHideTimer.current);
-            tooltipHideTimer.current = null;
-        }
-    };
-
-    const hideCitationTooltip = () => {
-        clearTooltipHideTimer();
-        setHoveredMsgId(null);
-        setTooltipPos(null);
-    };
-
-    const scheduleCitationTooltipHide = () => {
-        clearTooltipHideTimer();
-        tooltipHideTimer.current = setTimeout(hideCitationTooltip, 180);
-    };
-
-    // Hover Tooltip Position & Data
-    const handleCitationHover = (
-        msgId: number | null,
-        e: MouseEvent<HTMLButtonElement> | null
-    ) => {
-        if (msgId === null || !e) {
-            scheduleCitationTooltipHide();
-            return;
-        }
-        clearTooltipHideTimer();
-        const rect = e.currentTarget.getBoundingClientRect();
-        setHoveredMsgId(msgId);
-        setTooltipPos({
-            top: rect.top - 8,
-            left: rect.left + rect.width / 2,
-        });
-    };
-
-    const handleTooltipOpenMessage = () => {
-        if (!hoveredMessage) return;
-        handleCitationClick(hoveredMessage.message_id);
-        hideCitationTooltip();
-    };
-
-    const handleTooltipKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-        if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            handleTooltipOpenMessage();
-        }
-        if (event.key === "Escape") {
-            hideCitationTooltip();
-        }
     };
 
     // Dynamic Citation Index Mapping
@@ -332,7 +290,6 @@ export default function ProjectDetailClient({
     }, [project.timeline, narrative.phases, searchQuery, directionFilter, selectedMemberFilter]);
     const hasStructuredNarrative = narrative.phases.length > 0;
 
-    const hoveredMessage = hoveredMsgId ? messageMap.get(hoveredMsgId) : null;
     // Pastel colors generator helper
     const getPastelColor = (idx: number) => {
         const colors = [
@@ -367,12 +324,17 @@ export default function ProjectDetailClient({
                         : "bg-outline-variant group-hover:bg-outline"
             }`}
         />
-                <MessageRow
+                <MessagePreview
                     id={`msg-card-${item.message_id}`}
                     messageId={item.message_id}
-                    subject={item.subject}
-                    snippet={bestPreviewExcerpt(item.subject, item.snippet, item.body_text)}
-                    dateLabel={formatMonthDay(item.date)}
+                    layout="row"
+                    summary={{
+                        messageId: item.message_id,
+                        subject: item.subject,
+                        snippet: bestPreviewExcerpt(item.subject, item.snippet, item.body_text),
+                        sentAt: item.date,
+                        dateLabel: formatMonthDay(item.date),
+                    }}
                     selected={isSelected}
                     highlighted={isHighlighted}
                     badge={{
@@ -392,7 +354,7 @@ export default function ProjectDetailClient({
                             ) : null}
                         </div>
                     }
-                    onSelect={() => handleCitationClick(item.message_id)}
+                    onOpen={() => handleCitationClick(item.message_id)}
                 />
             </div>
         );
@@ -591,7 +553,7 @@ export default function ProjectDetailClient({
                                     text={narrative.summary}
                                     citationIndexMap={citationMap}
                                     onSelect={handleCitationClick}
-                                    onHover={handleCitationHover}
+                                    messageSummaries={messageSummaries}
                                 />
                             ) : (
                                 <div className="space-y-4">
@@ -625,7 +587,7 @@ export default function ProjectDetailClient({
                                             text={phase.content}
                                             citationIndexMap={citationMap}
                                             onSelect={handleCitationClick}
-                                            onHover={handleCitationHover}
+                                            messageSummaries={messageSummaries}
                                         />
                                     </div>
                                 </div>
@@ -646,7 +608,7 @@ export default function ProjectDetailClient({
                                     text={narrative.current_understanding}
                                     citationIndexMap={citationMap}
                                     onSelect={handleCitationClick}
-                                    onHover={handleCitationHover}
+                                    messageSummaries={messageSummaries}
                                 />
                             </div>
                         </div>
@@ -675,7 +637,7 @@ export default function ProjectDetailClient({
                                                     text={pt.text}
                                                     citationIndexMap={citationMap}
                                                     onSelect={handleCitationClick}
-                                                    onHover={handleCitationHover}
+                                                    messageSummaries={messageSummaries}
                                                 />
                                             </div>
                                         </div>
@@ -944,7 +906,9 @@ export default function ProjectDetailClient({
                             </div>
                         </div>
 
-                        <MessagePreviewPanel
+                        <MessagePreview
+                            messageId={selectedMessageDetail?.message_id ?? selectedMessage?.message_id ?? 0}
+                            layout="side-panel"
                             detail={selectedMessageDetail}
                             summary={
                                 selectedMessage
@@ -961,9 +925,7 @@ export default function ProjectDetailClient({
                             isLoading={selectedMessageLoading}
                             error={selectedMessageError}
                             emptyText="Click any citation or timeline message to inspect the source email here without losing your place."
-                            onLocate={
-                                selectedMessage ? () => locateMessageInTimeline(selectedMessage.message_id) : null
-                            }
+                            onLocate={selectedMessage ? locateMessageInTimeline : undefined}
                         />
                     </div>
 
@@ -1146,41 +1108,6 @@ export default function ProjectDetailClient({
                 </aside>
             </div>
 
-            {/* Floating Hover Citation Tooltip */}
-            {tooltipPos && hoveredMessage && (
-                <div
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`Open message ${hoveredMessage.message_id}`}
-                    onMouseEnter={clearTooltipHideTimer}
-                    onMouseLeave={scheduleCitationTooltipHide}
-                    onClick={handleTooltipOpenMessage}
-                    onKeyDown={handleTooltipKeyDown}
-                    className="fixed z-50 -translate-x-1/2 -translate-y-full bg-inverse-surface text-inverse-on-surface p-4 rounded-xl shadow-lg border border-outline w-80 max-w-[90vw] text-left transition-all duration-200 cursor-pointer"
-                    style={{top: tooltipPos.top, left: tooltipPos.left}}
-                >
-                    <div className="flex justify-between items-center gap-2 mb-1.5 border-b border-outline/30 pb-1.5">
-            <span
-                className="rounded-full border border-outline/20 bg-white/10 px-2 py-0.5 text-[10px] font-medium text-white/90">
-              {formatEvidenceLabel(hoveredMessage.message_id)}
-            </span>
-                        <span className="text-[10px] opacity-75 font-mono">
-              {hoveredMessage.date}
-            </span>
-                    </div>
-                    <p className="text-[11px] font-bold truncate mb-1">
-                        {maskEmailAddresses(hoveredMessage.from_canonical_name)} &rarr; {hoveredMessage.direction === "from_account" ? "Outbound" : "Inbound"}
-                    </p>
-                    <p className="text-xs font-bold line-clamp-1 mb-1.5 text-white">
-                        {maskEmailAddresses(hoveredMessage.subject)}
-                    </p>
-                    <p className="text-[11px] opacity-90 line-clamp-3 italic font-serif">
-                        &ldquo;{maskEmailAddresses(hoveredMessage.snippet)}&rdquo;
-                    </p>
-                    <div
-                        className="absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-full w-0 h-0 border-x-[6px] border-x-transparent border-t-[6px] border-t-inverse-surface"></div>
-                </div>
-            )}
         </div>
     );
 }

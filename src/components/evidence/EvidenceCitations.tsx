@@ -1,13 +1,14 @@
-import type {MouseEvent} from "react";
 import {maskEmailAddresses} from "@/lib/contact-display";
 import {formatEvidenceLabel} from "./labels";
+import {MessageReference} from "./MessageReference";
+import type {MessageSummary} from "./types";
 
 interface CitationButtonProps {
     messageId: number;
     label?: number | string;
     disabled?: boolean;
     onSelect?: (messageId: number) => void;
-    onHover?: (messageId: number | null, event: MouseEvent<HTMLButtonElement> | null) => void;
+    summary?: MessageSummary | null;
 }
 
 export function CitationButton({
@@ -15,28 +16,29 @@ export function CitationButton({
                                    label,
                                    disabled = false,
                                    onSelect,
-                                   onHover,
+                                   summary = null,
                                }: CitationButtonProps) {
+    if (disabled) {
+        return (
+            <span
+                className="px-1.5 py-0.5 mx-0.5 font-mono text-[10px] font-bold rounded transition-all inline-flex items-center align-middle bg-surface-container text-on-surface-variant/40 border border-outline-variant/30 cursor-not-allowed"
+                title={`${formatEvidenceLabel(messageId)} is unavailable on this page`}
+            >
+                [{label ?? messageId}]
+            </span>
+        );
+    }
+
     return (
-        <button
-            type="button"
-            disabled={disabled}
-            onClick={() => !disabled && onSelect?.(messageId)}
-            onMouseEnter={(event) => !disabled && onHover?.(messageId, event)}
-            onMouseLeave={() => !disabled && onHover?.(null, null)}
-            className={`px-1.5 py-0.5 mx-0.5 font-mono text-[10px] font-bold rounded transition-all inline-flex items-center align-middle ${
-                disabled
-                    ? "bg-surface-container text-on-surface-variant/40 border border-outline-variant/30 cursor-not-allowed"
-                    : "bg-[#c4ebde] text-[#00201a] hover:bg-[#a9cec2] border border-[#12362e]/10 cursor-pointer shadow-sm"
-            }`}
-            title={
-                disabled
-                    ? `${formatEvidenceLabel(messageId)} is unavailable on this page`
-                    : `Open ${formatEvidenceLabel(messageId)}`
-            }
-        >
-            [{label ?? messageId}]
-        </button>
+        <MessageReference
+            messageId={messageId}
+            display="citation-number"
+            citationNumber={label ?? messageId}
+            preview="compact"
+            openTarget={onSelect ? "right-panel" : "none"}
+            summary={summary}
+            onOpen={onSelect}
+        />
     );
 }
 
@@ -44,12 +46,12 @@ export function CitationChipList({
                                      messageIds,
                                      citationIndexMap,
                                      onSelect,
-                                     onHover,
+                                     messageSummaries,
                                  }: {
     messageIds: number[];
     citationIndexMap?: Map<number, number>;
     onSelect?: (messageId: number) => void;
-    onHover?: (messageId: number | null, event: MouseEvent<HTMLButtonElement> | null) => void;
+    messageSummaries?: Map<number, MessageSummary>;
 }) {
     return (
         <div className="flex flex-wrap gap-1.5">
@@ -59,7 +61,7 @@ export function CitationChipList({
                     messageId={messageId}
                     label={citationIndexMap?.get(messageId) ?? messageId}
                     onSelect={onSelect}
-                    onHover={onHover}
+                    summary={messageSummaries?.get(messageId) ?? null}
                 />
             ))}
         </div>
@@ -70,12 +72,12 @@ export function EvidenceText({
                                  text,
                                  citationIndexMap,
                                  onSelect,
-                                 onHover,
+                                 messageSummaries,
                              }: {
     text: string;
     citationIndexMap?: Map<number, number>;
     onSelect?: (messageId: number) => void;
-    onHover?: (messageId: number | null, event: MouseEvent<HTMLButtonElement> | null) => void;
+    messageSummaries?: Map<number, MessageSummary>;
 }) {
     if (!text) {
         return null;
@@ -96,7 +98,7 @@ export function EvidenceText({
                 messageId={messageId}
                 label={citationIndexMap?.get(messageId) ?? messageId}
                 onSelect={onSelect}
-                onHover={onHover}
+                summary={messageSummaries?.get(messageId) ?? null}
             />
         ))}
       </span>

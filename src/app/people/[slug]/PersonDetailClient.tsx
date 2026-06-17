@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import {useRouter} from "next/navigation";
-import type {MouseEvent, ReactNode} from "react";
-import {useCallback, useEffect, useMemo, useRef, useState} from "react";
-import CitationHoverCard from "@/components/evidence/CitationHoverCard";
+import type {ReactNode} from "react";
+import {useCallback, useEffect, useMemo, useState} from "react";
 import {contactInitials, displayContactName, maskEmail, maskEmailAddresses} from "@/lib/contact-display";
 import EmailReveal from "@/components/email-reveal";
 import {gravatarUrl} from "@/lib/gravatar";
@@ -19,8 +18,8 @@ import {
     EvidenceText,
 } from "@/components/evidence/EvidenceCitations";
 import InspectorTabs from "@/components/evidence/InspectorTabs";
-import MessagePreviewPanel from "@/components/evidence/MessagePreviewPanel";
-import MessageRow from "@/components/evidence/MessageRow";
+import {MessagePreview} from "@/components/evidence/MessagePreview";
+import type {MessageSummary} from "@/components/evidence/types";
 import {useMessageDetail} from "@/components/evidence/useMessageDetail";
 
 interface Props {
@@ -433,14 +432,26 @@ export default function PersonDetailClient({
         [person.timeline],
     );
     const [activeRailTab, setActiveRailTab] = useState<"context" | "source">("context");
-    const [hoveredMessageId, setHoveredMessageId] = useState<number | null>(null);
-    const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number } | null>(null);
     const [selectedMessageId, setSelectedMessageId] = useState<number | null>(null);
     const [highlightedMessageId, setHighlightedMessageId] = useState<number | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
-    const tooltipHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const messageSummaries = useMemo(() => {
+        const map = new Map<number, MessageSummary>();
+        person.timeline.forEach((item) => {
+            const fromContact = item.direction === "from_contact";
+            map.set(item.message_id, {
+                messageId: item.message_id,
+                subject: item.subject,
+                snippet: item.snippet,
+                sentAt: item.date,
+                fromLabel: fromContact ? displayName : "You",
+                fromEmail: item.via_email,
+                directionLabel: fromContact ? "Inbound" : "Outbound",
+            });
+        });
+        return map;
+    }, [displayName, person.timeline]);
     const selectedMessage = selectedMessageId ? timelineById.get(selectedMessageId) ?? null : null;
-    const hoveredMessage = hoveredMessageId ? timelineById.get(hoveredMessageId) ?? null : null;
     const {detail: selectedMessageDetail, isLoading: selectedMessageLoading, error: selectedMessageError} =
         useMessageDetail(selectedMessageId);
     const citationIndexMap = useMemo(
@@ -520,41 +531,6 @@ export default function PersonDetailClient({
         setSelectedMessageId(messageId);
         setActiveRailTab("source");
     }, []);
-
-    const clearTooltipHideTimer = () => {
-        if (tooltipHideTimer.current) {
-            clearTimeout(tooltipHideTimer.current);
-            tooltipHideTimer.current = null;
-        }
-    };
-
-    const hideCitationTooltip = () => {
-        clearTooltipHideTimer();
-        setHoveredMessageId(null);
-        setTooltipPos(null);
-    };
-
-    const scheduleCitationTooltipHide = () => {
-        clearTooltipHideTimer();
-        tooltipHideTimer.current = setTimeout(hideCitationTooltip, 180);
-    };
-
-    const handleCitationHover = (
-        messageId: number | null,
-        event: MouseEvent<HTMLButtonElement> | null,
-    ) => {
-        if (messageId === null || !event) {
-            scheduleCitationTooltipHide();
-            return;
-        }
-        clearTooltipHideTimer();
-        const rect = event.currentTarget.getBoundingClientRect();
-        setHoveredMessageId(messageId);
-        setTooltipPos({
-            top: rect.top - 8,
-            left: rect.left + rect.width / 2,
-        });
-    };
 
     const jumpToSection = (sectionId: string) => {
         document.getElementById(sectionId)?.scrollIntoView({behavior: "smooth", block: "start"});
@@ -742,7 +718,7 @@ export default function PersonDetailClient({
                                     onSaveEdit={() => void saveNarrative("summary")}
                                     citationIndexMap={citationIndexMap}
                                     onSelectMessage={openMessageSource}
-                                    onHoverMessage={handleCitationHover}
+                                    messageSummaries={messageSummaries}
                                 />
                             ) : (
                                 <p className="text-body-reading font-body-reading text-on-surface-variant italic">
@@ -815,7 +791,7 @@ export default function PersonDetailClient({
                                                         text={facetContentFor(facet.id, facet.content)}
                                                         citationIndexMap={citationIndexMap}
                                                         onSelect={openMessageSource}
-                                                        onHover={handleCitationHover}
+                                                        messageSummaries={messageSummaries}
                                                     />
                                                 </p>
                                             )}
@@ -825,7 +801,7 @@ export default function PersonDetailClient({
                                                         messageIds={facet.source_message_ids.slice(0, 5)}
                                                         citationIndexMap={citationIndexMap}
                                                         onSelect={openMessageSource}
-                                                        onHover={handleCitationHover}
+                                                        messageSummaries={messageSummaries}
                                                     />
                                                 </div>
                                             )}
@@ -854,7 +830,7 @@ export default function PersonDetailClient({
                                         onSaveEdit={() => void saveNarrative("relationship_arc")}
                                         citationIndexMap={citationIndexMap}
                                         onSelectMessage={openMessageSource}
-                                        onHoverMessage={handleCitationHover}
+                                        messageSummaries={messageSummaries}
                                     />
                                 )}
                                 {narrative.current_status?.content && (
@@ -874,7 +850,7 @@ export default function PersonDetailClient({
                                         onSaveEdit={() => void saveNarrative("current_status")}
                                         citationIndexMap={citationIndexMap}
                                         onSelectMessage={openMessageSource}
-                                        onHoverMessage={handleCitationHover}
+                                        messageSummaries={messageSummaries}
                                     />
                                 )}
                             </section>
@@ -927,7 +903,7 @@ export default function PersonDetailClient({
                                                 messageId={person.timeline[1].message_id}
                                                 label={citationIndexMap.get(person.timeline[1].message_id) ?? "source"}
                                                 onSelect={openMessageSource}
-                                                onHover={handleCitationHover}
+                                                summary={messageSummaries.get(person.timeline[1].message_id) ?? null}
                                             />
                                         </>
                                     ) : null}
@@ -951,12 +927,17 @@ export default function PersonDetailClient({
                                         <ol className="space-y-3">
                                             {items.slice(0, 8).map((item) => (
                                                 <li key={item.message_id}>
-                                                    <MessageRow
+                                                    <MessagePreview
                                                         id={`person-msg-${item.message_id}`}
                                                         messageId={item.message_id}
-                                                        subject={item.subject}
-                                                        snippet={item.snippet}
-                                                        dateLabel={formatMonthDay(item.date)}
+                                                        layout="row"
+                                                        summary={{
+                                                            messageId: item.message_id,
+                                                            subject: item.subject,
+                                                            snippet: item.snippet,
+                                                            sentAt: item.date,
+                                                            dateLabel: formatMonthDay(item.date),
+                                                        }}
                                                         selected={selectedMessageId === item.message_id}
                                                         highlighted={highlightedMessageId === item.message_id}
                                                         badge={{
@@ -968,7 +949,7 @@ export default function PersonDetailClient({
                                                                 via <EmailReveal email={item.via_email}/>
                                                             </p>
                                                         }
-                                                        onSelect={() => openMessageSource(item.message_id)}
+                                                        onOpen={() => openMessageSource(item.message_id)}
                                                     />
                                                 </li>
                                             ))}
@@ -1032,7 +1013,9 @@ export default function PersonDetailClient({
                                     <p className="text-[11px] uppercase tracking-[0.14em] text-on-surface-variant mb-2">Source</p>
                                     <h3 className="text-ui-medium font-bold text-primary">Supporting email</h3>
                                 </div>
-                                <MessagePreviewPanel
+                                <MessagePreview
+                                    messageId={selectedMessageDetail?.message_id ?? selectedMessage?.message_id ?? 0}
+                                    layout="side-panel"
                                     detail={selectedMessageDetail}
                                     summary={
                                         selectedMessage
@@ -1049,9 +1032,7 @@ export default function PersonDetailClient({
                                     isLoading={selectedMessageLoading}
                                     error={selectedMessageError}
                                     emptyText="Click a citation or recent message to inspect the supporting email here."
-                                    onLocate={
-                                        selectedMessage ? () => locateMessageInTimeline(selectedMessage.message_id) : null
-                                    }
+                                    onLocate={selectedMessage ? locateMessageInTimeline : undefined}
                                     locateLabel="Locate in recent messages"
                                 />
                             </div>
@@ -1080,7 +1061,7 @@ export default function PersonDetailClient({
                                         onSave={saveAttribute}
                                         onDelete={deleteAttribute}
                                         onSelectMessage={openMessageSource}
-                                        onHoverMessage={handleCitationHover}
+                                        messageSummaries={messageSummaries}
                                     />
                                 )}
 
@@ -1148,26 +1129,6 @@ export default function PersonDetailClient({
                     </aside>
                 </div>
             </div>
-
-            {tooltipPos && hoveredMessage ? (
-                <CitationHoverCard
-                    message={{
-                        messageId: hoveredMessage.message_id,
-                        dateLabel: formatMonthDay(hoveredMessage.date),
-                        fromLabel: hoveredMessage.direction === "from_contact" ? displayName : "You",
-                        subject: hoveredMessage.subject || "(No subject)",
-                        snippet: hoveredMessage.snippet || "",
-                        directionLabel: hoveredMessage.direction === "from_contact" ? "Inbound" : "Outbound",
-                    }}
-                    position={tooltipPos}
-                    onOpen={() => {
-                        openMessageSource(hoveredMessage.message_id);
-                        hideCitationTooltip();
-                    }}
-                    onKeepOpen={clearTooltipHideTimer}
-                    onCloseSoon={scheduleCitationTooltipHide}
-                />
-            ) : null}
         </div>
     );
 }
@@ -1185,7 +1146,7 @@ function NarrativeBlock({
                             onSaveEdit,
                             citationIndexMap,
                             onSelectMessage,
-                            onHoverMessage,
+                            messageSummaries,
                         }: {
     title: string;
     section: { content: string; source_message_ids?: number[] };
@@ -1199,7 +1160,7 @@ function NarrativeBlock({
     onSaveEdit: () => void;
     citationIndexMap: Map<number, number>;
     onSelectMessage: (messageId: number) => void;
-    onHoverMessage: (messageId: number | null, event: MouseEvent<HTMLButtonElement> | null) => void;
+    messageSummaries: Map<number, MessageSummary>;
 }) {
     return (
         <article className="group bg-surface-container-lowest border border-outline-variant rounded-lg p-5">
@@ -1246,7 +1207,7 @@ function NarrativeBlock({
                         text={content}
                         citationIndexMap={citationIndexMap}
                         onSelect={onSelectMessage}
-                        onHover={onHoverMessage}
+                        messageSummaries={messageSummaries}
                     />
                 </p>
             )}
@@ -1256,7 +1217,7 @@ function NarrativeBlock({
                         messageIds={section.source_message_ids.slice(0, 8)}
                         citationIndexMap={citationIndexMap}
                         onSelect={onSelectMessage}
-                        onHover={onHoverMessage}
+                        messageSummaries={messageSummaries}
                     />
                 </div>
             )}
@@ -1277,7 +1238,7 @@ function PersonalDetailsRail({
                                  onSave,
                                  onDelete,
                                  onSelectMessage,
-                                 onHoverMessage,
+                                 messageSummaries,
                              }: {
     groupedAttributes: Array<[string, PersonAttribute[]]>;
     attributeDrafts: Record<number, { label: string; value: string; date_value?: string }>;
@@ -1291,7 +1252,7 @@ function PersonalDetailsRail({
     onSave: (attributeId: number) => void;
     onDelete: (attributeId: number) => void;
     onSelectMessage: (messageId: number) => void;
-    onHoverMessage: (messageId: number | null, event: MouseEvent<HTMLButtonElement> | null) => void;
+    messageSummaries: Map<number, MessageSummary>;
 }) {
     const total = groupedAttributes.reduce((sum, [, items]) => sum + items.length, 0);
     return (
@@ -1378,7 +1339,7 @@ function PersonalDetailsRail({
                                                                 text={value.value}
                                                                 citationIndexMap={citationIndexMap}
                                                                 onSelect={onSelectMessage}
-                                                                onHover={onHoverMessage}
+                                                                messageSummaries={messageSummaries}
                                                             />
                                                             {value.date_value ? (
                                                                 <span
@@ -1405,7 +1366,7 @@ function PersonalDetailsRail({
                                                             messageIds={attribute.source_message_ids.slice(0, 5)}
                                                             citationIndexMap={citationIndexMap}
                                                             onSelect={onSelectMessage}
-                                                            onHover={onHoverMessage}
+                                                            messageSummaries={messageSummaries}
                                                         />
                                                     </div>
                                                 )}

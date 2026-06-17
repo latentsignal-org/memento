@@ -3,7 +3,7 @@
 import {useEffect, useRef, useState} from "react";
 import Link from "next/link";
 import {useMessageDetail} from "@/components/evidence/useMessageDetail";
-import MessagePreviewPanel from "@/components/evidence/MessagePreviewPanel";
+import {MessagePreview} from "@/components/evidence/MessagePreview";
 
 // ---- Types (shape matches social.GroupDetail in the Go backend) -------------
 
@@ -786,7 +786,9 @@ export default function GroupCard({group, onChange, onRemove}: GroupCardProps) {
                             </button>
                         </div>
                         <div className="overflow-y-auto">
-                            <MessagePreviewPanel
+                            <MessagePreview
+                                messageId={previewDetail?.message_id ?? previewMessageId ?? 0}
+                                layout="side-panel"
                                 detail={previewDetail}
                                 isLoading={previewLoading}
                                 error={previewError}
