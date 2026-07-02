@@ -5,6 +5,18 @@ sparse: record choices that affect product behavior, data safety, architecture, 
 interfaces, or long-term maintenance. Do not record routine implementation details,
 temporary plans, TODOs, test notes, or decisions already obvious from code.
 
+## 2026-07-02 — Automatic identity links require deterministic mailbox equivalence
+
+Person resolution may automatically link addresses only when email normalization proves
+they are the same mailbox: case normalization, guarded plus-tag stripping for known
+providers, and Gmail/Googlemail dot-insensitivity. Display-name equality, forwarder
+parentheticals, fuzzy spelling, token overlap, and graph signatures are advisory signals
+for human review, not automatic merge evidence.
+
+Existing unlocked resolver links created from non-deterministic evidence are repaired by
+an explicit dry-run/apply split flow. Manual links, locked rows, user-confirmed
+signature merges, and deterministic normalized-email groups are preserved.
+
 ## 2026-06-16 — Generated markdown must not trigger arbitrary browser egress
 
 LLM-generated markdown is treated as untrusted content because it can be influenced by

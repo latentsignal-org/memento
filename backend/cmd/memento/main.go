@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sort"
 	"strings"
 	"syscall"
 	"text/tabwriter"
@@ -90,6 +91,8 @@ func run(ctx context.Context, args []string) error {
 		return runPersonLink(ctx, args[1:])
 	case "person-split":
 		return runPersonSplit(ctx, args[1:])
+	case "person-repair-nondeterministic":
+		return runPersonRepairNonDeterministic(ctx, args[1:])
 	case "person-merge-suggest":
 		return runPersonMergeSuggest(ctx, args[1:])
 	case "person-merge":
@@ -149,6 +152,8 @@ Manual person edits (locked overrides; run refresh afterwards):
   person-show         Show a person and all their linked emails
   person-link         Manually link an email to an existing person
   person-split        Split an email off into a brand-new person
+  person-repair-nondeterministic
+                       Dry-run/apply repair for legacy unsafe resolver links
 
 Other dimensions:
   project             Manage tracked projects
@@ -467,14 +472,17 @@ func openMementoStore(dbPath string) (*sql.DB, string, error) {
 func runPersonResolve(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("person-resolve", flag.ContinueOnError)
 	dbPath := fs.String("db", "", "msgvault SQLite database path")
-	includeFuzzy := fs.Bool("fuzzy", false, "include Jaro-Winkler + Jaccard second pass")
+	includeFuzzy := fs.Bool("fuzzy", false, "deprecated no-op; fuzzy evidence is advisory only")
 	persist := fs.Bool("persist", false, "write results to memento_person / memento_person_email")
 	jsonOut := fs.Bool("json", false, "emit JSON")
-	jaroThreshold := fs.Float64("jaro", 0.92, "Jaro-Winkler threshold (fuzzy mode)")
-	jaccardThreshold := fs.Float64("jaccard", 0.6, "Jaccard threshold (fuzzy mode)")
-	minMessages := fs.Int64("min-messages", 5, "skip fuzzy pass below this message count")
+	jaroThreshold := fs.Float64("jaro", 0.92, "Jaro-Winkler threshold for advisory suggestions")
+	jaccardThreshold := fs.Float64("jaccard", 0.6, "Jaccard threshold for advisory suggestions")
+	minMessages := fs.Int64("min-messages", 5, "skip fuzzy advisory suggestions below this message count")
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+	if *includeFuzzy {
+		fmt.Fprintln(os.Stderr, "Warning: --fuzzy is deprecated and no longer affects automatic person linking; fuzzy evidence is advisory only.")
 	}
 
 	reader, err := openReader(*dbPath)
@@ -492,43 +500,44 @@ func runPersonResolve(ctx context.Context, args []string) error {
 		return err
 	}
 
-	locked, err := person.LoadLockedEmails(ctx, db)
-	if err != nil {
-		return err
-	}
-
 	opts := person.DefaultResolveOptions()
-	opts.IncludeFuzzy = *includeFuzzy
 	opts.JaroThreshold = *jaroThreshold
 	opts.JaccardThreshold = *jaccardThreshold
 	opts.MinMessagesForFuzzy = *minMessages
 
-	report, clusters, err := person.Resolve(ctx, reader, locked, opts)
-	if err != nil {
-		return err
-	}
-
 	if *persist {
-		created, linked, err := person.PersistClusters(ctx, db, clusters)
+		report, err := person.ResolveAndPersist(ctx, reader, db, opts)
 		if err != nil {
 			return err
 		}
-		report.PersonsCreated = created
-		report.EmailsLinked = linked
+		return writePersonResolveReport(report, reader.Path(), *persist, *jsonOut)
 	}
 
-	if *jsonOut {
+	locked, err := person.LoadLockedEmails(ctx, db)
+	if err != nil {
+		return err
+	}
+	report, _, err := person.Resolve(ctx, reader, locked, opts)
+	if err != nil {
+		return err
+	}
+	return writePersonResolveReport(report, reader.Path(), *persist, *jsonOut)
+}
+
+func writePersonResolveReport(report person.ResolveReport, dbPath string, persisted bool, jsonOut bool) error {
+	if jsonOut {
 		return writeJSON(report)
 	}
 
-	fmt.Printf("Database:           %s\n", reader.Path())
+	fmt.Printf("Database:           %s\n", dbPath)
 	fmt.Printf("Participants seen:  %d\n", report.ParticipantsSeen)
 	fmt.Printf("Locked rows kept:   %d\n", report.LockedSkipped)
 	fmt.Printf("Clusters formed:    %d\n", report.PersonsTotal)
 	fmt.Printf("Emails clustered:   %d\n", report.EmailsLinked)
-	if *persist {
+	if persisted {
 		fmt.Printf("Persons created:    %d\n", report.PersonsCreated)
 	}
+	fmt.Printf("Advisory suggestions: %d\n", len(report.Suggestions))
 	fmt.Println("By link source:")
 	for source, n := range report.BySource {
 		fmt.Printf("  %-20s %d emails\n", source, n)
@@ -658,6 +667,77 @@ func runPersonSplit(ctx context.Context, args []string) error {
 		return err
 	}
 	fmt.Printf("Created person #%d from %s (locked).\n", personID, *email)
+	return nil
+}
+
+func runPersonRepairNonDeterministic(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("person-repair-nondeterministic", flag.ContinueOnError)
+	dbPath := fs.String("db", "", "msgvault SQLite database path")
+	dryRun := fs.Bool("dry-run", false, "report unsafe legacy resolver links without changing data")
+	apply := fs.Bool("apply", false, "split unsafe legacy resolver links")
+	jsonOut := fs.Bool("json", false, "emit JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *dryRun == *apply {
+		return fmt.Errorf("person-repair-nondeterministic requires exactly one of --dry-run or --apply")
+	}
+
+	db, _, err := openMementoStore(*dbPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	if _, err := store.Migrate(ctx, db); err != nil {
+		return err
+	}
+
+	report, err := person.RepairNonDeterministicLinks(ctx, db, person.RepairOptions{Apply: *apply})
+	if err != nil {
+		return err
+	}
+	if *jsonOut {
+		return writeJSON(report)
+	}
+
+	mode := "Dry run"
+	if report.Applied {
+		mode = "Applied"
+	}
+	fmt.Printf("%s legacy non-deterministic link repair.\n", mode)
+	fmt.Printf("Persons scanned:   %d\n", report.PersonsScanned)
+	fmt.Printf("Persons affected:  %d\n", report.PersonsAffected)
+	fmt.Printf("Emails split:      %d\n", report.EmailsSplit)
+	if len(report.SplitCountsBySource) > 0 {
+		fmt.Println("By prior source:")
+		var sources []string
+		for source := range report.SplitCountsBySource {
+			sources = append(sources, source)
+		}
+		sort.Strings(sources)
+		for _, source := range sources {
+			fmt.Printf("  %-20s %d emails\n", source, report.SplitCountsBySource[source])
+		}
+	}
+	if len(report.Splits) > 0 {
+		fmt.Println()
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		fmt.Fprintln(w, "OLD_PERSON\tNEW_PERSON\tNORMALIZED_EMAIL\tEMAILS\tPRIOR_SOURCES")
+		for _, split := range report.Splits {
+			newID := "-"
+			if split.NewPersonID != 0 {
+				newID = fmt.Sprintf("%d", split.NewPersonID)
+			}
+			fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\n",
+				split.OriginalPersonID,
+				newID,
+				split.NormalizedEmail,
+				strings.Join(split.Emails, ", "),
+				strings.Join(split.PriorSources, ", "),
+			)
+		}
+		return w.Flush()
+	}
 	return nil
 }
 

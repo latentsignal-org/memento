@@ -104,20 +104,11 @@ func RunInit(ctx context.Context, db *sql.DB, p InitParams, progress Progress) (
 	defer reader.Close()
 
 	progress("resolve_persons", 4, initStepTotal, "Resolving canonical people")
-	locked, err := person.LoadLockedEmails(ctx, db)
+	resolveReport, err := person.ResolveAndPersist(ctx, reader, db, person.DefaultResolveOptions())
 	if err != nil {
-		return summary, fmt.Errorf("load locked emails: %w", err)
+		return summary, fmt.Errorf("resolve and persist persons: %w", err)
 	}
-	resolveOpts := person.DefaultResolveOptions()
-	resolveOpts.IncludeFuzzy = true
-	_, clusters, err := person.Resolve(ctx, reader, locked, resolveOpts)
-	if err != nil {
-		return summary, fmt.Errorf("resolve persons: %w", err)
-	}
-	summary.Persons, _, err = person.PersistClusters(ctx, db, clusters)
-	if err != nil {
-		return summary, fmt.Errorf("persist persons: %w", err)
-	}
+	summary.Persons = resolveReport.PersonsCreated
 
 	classifyAll := func() (int, int, error) {
 		report, err := people.BuildCandidateReport(ctx, reader, people.CandidateOptions{Full: true})
