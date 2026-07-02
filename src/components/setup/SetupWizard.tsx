@@ -484,6 +484,15 @@ export function SetupWizard() {
                                 <div
                                     className="mt-1 text-label-caps font-label-caps text-on-surface-variant">{label}</div>
                             </div>)}</div> : null}
+                        {summary && summary.duplicates > 0 ? (
+                            <Link
+                                href="/people/merge-review"
+                                className="mt-4 inline-flex items-center gap-2 rounded-lg border border-primary/25 bg-primary-fixed px-3 py-2 text-sm font-semibold text-on-primary-fixed-variant"
+                            >
+                                Review merge candidates
+                                <span className="material-symbols-outlined text-[17px]">arrow_forward</span>
+                            </Link>
+                        ) : null}
                         {summary?.warnings?.length ?
                             <div className="mt-6"><h2 className="mb-2 text-sm font-semibold">Postflight notes</h2>
                                 <CheckList checks={summary.warnings}/></div> : null}
