@@ -220,10 +220,9 @@ func TestFindMergeCandidates_DifferentNeighborhoodsRejected(t *testing.T) {
 	}
 }
 
-// TestFindMergeCandidates_NameMismatchRejected protects against the case
-// where two people happen to share an email-local token by coincidence
-// ("info@a.com" vs "info@b.com") — names should disambiguate.
-func TestFindMergeCandidates_NameMismatchRejected(t *testing.T) {
+// TestFindMergeCandidates_NameMismatchWithStrongGraphSurfaced confirms graph
+// evidence is no longer blocked by a hard name gate.
+func TestFindMergeCandidates_NameMismatchWithStrongGraphSurfaced(t *testing.T) {
 	db := newMergeTestDB(t)
 	p1 := seedPerson(t, db, "Alice Wonderland", "alice@x.com")
 	p2 := seedPerson(t, db, "Bob Burger", "bob@x.com")
@@ -239,10 +238,18 @@ func TestFindMergeCandidates_NameMismatchRejected(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FindMergeCandidates: %v", err)
 	}
+	var found *MergeCandidate
 	for _, c := range cands {
 		if (c.FromID == p1 && c.IntoID == p2) || (c.FromID == p2 && c.IntoID == p1) {
-			t.Errorf("disjoint-name pair should not be surfaced: %+v", c)
+			found = &c
+			break
 		}
+	}
+	if found == nil {
+		t.Fatalf("expected graph-backed divergent-name candidate, got %+v", cands)
+	}
+	if found.NameScore != 0 || found.SignatureScore < 0.9 {
+		t.Fatalf("unexpected scores for divergent-name graph candidate: %+v", found)
 	}
 }
 

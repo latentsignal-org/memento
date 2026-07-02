@@ -176,7 +176,7 @@ func RunInit(ctx context.Context, db *sql.DB, p InitParams, progress Progress) (
 	}
 
 	progress("scan_duplicates", 13, initStepTotal, "Scanning for likely duplicate people")
-	mergeCandidates, err := person.FindMergeCandidates(ctx, db, person.DefaultMergeOptions())
+	mergeCandidates, err := person.GenerateAndPersistGraphSuggestions(ctx, db, person.DefaultMergeOptions())
 	if err == nil {
 		summary.Duplicates = len(mergeCandidates)
 	} else {

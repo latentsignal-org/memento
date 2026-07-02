@@ -46,17 +46,26 @@ func LoadLockedEmails(ctx context.Context, db *sql.DB) (map[string]bool, error) 
 // reviews/labels) key on memento_person.id. If id values churn across runs,
 // those references go stale. Incremental preservation is the contract.
 func PersistClusters(ctx context.Context, db *sql.DB, clusters []cluster) (created, linked int, err error) {
+	created, linked, _, err = PersistClustersWithMapping(ctx, db, clusters)
+	return created, linked, err
+}
+
+// PersistClustersWithMapping behaves like PersistClusters and also returns a
+// run-local cluster id -> persisted person id map for advisory suggestion
+// generation.
+func PersistClustersWithMapping(ctx context.Context, db *sql.DB, clusters []cluster) (created, linked int, clusterPersonIDs map[int]int64, err error) {
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, nil, err
 	}
 	defer tx.Rollback()
+	clusterPersonIDs = map[int]int64{}
 
 	now := time.Now().UTC().Format(time.RFC3339)
 
 	existingMap, err := loadEmailToPerson(ctx, tx)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, nil, err
 	}
 
 	insertPerson, err := tx.PrepareContext(ctx, `
@@ -64,7 +73,7 @@ func PersistClusters(ctx context.Context, db *sql.DB, clusters []cluster) (creat
 		VALUES (?, ?, ?, ?)
 	`)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, nil, err
 	}
 	defer insertPerson.Close()
 
@@ -74,7 +83,7 @@ func PersistClusters(ctx context.Context, db *sql.DB, clusters []cluster) (creat
 		WHERE id = ?
 	`)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, nil, err
 	}
 	defer updatePerson.Close()
 
@@ -92,7 +101,7 @@ func PersistClusters(ctx context.Context, db *sql.DB, clusters []cluster) (creat
 		WHERE memento_person_email.locked = 0
 	`)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, nil, err
 	}
 	defer upsertEmail.Close()
 
@@ -108,20 +117,21 @@ func PersistClusters(ctx context.Context, db *sql.DB, clusters []cluster) (creat
 
 		if reused {
 			if _, err := updatePerson.ExecContext(ctx, canonicalName, primaryEmail, now, personID); err != nil {
-				return 0, 0, fmt.Errorf("update person %d: %w", personID, err)
+				return 0, 0, nil, fmt.Errorf("update person %d: %w", personID, err)
 			}
 		} else {
 			res, err := insertPerson.ExecContext(ctx, canonicalName, primaryEmail, now, now)
 			if err != nil {
-				return 0, 0, fmt.Errorf("insert person: %w", err)
+				return 0, 0, nil, fmt.Errorf("insert person: %w", err)
 			}
 			id, err := res.LastInsertId()
 			if err != nil {
-				return 0, 0, err
+				return 0, 0, nil, err
 			}
 			personID = id
 			created++
 		}
+		clusterPersonIDs[c.ID] = personID
 
 		singleton := len(c.Members) == 1
 		for _, m := range c.Members {
@@ -143,7 +153,7 @@ func PersistClusters(ctx context.Context, db *sql.DB, clusters []cluster) (creat
 				confidence,
 				now, now,
 			); err != nil {
-				return 0, 0, fmt.Errorf("upsert email %s: %w", email, err)
+				return 0, 0, nil, fmt.Errorf("upsert email %s: %w", email, err)
 			}
 			linked++
 		}
@@ -153,7 +163,7 @@ func PersistClusters(ctx context.Context, db *sql.DB, clusters []cluster) (creat
 	// set this run (e.g., msgvault removed the participant). Locked rows are
 	// always preserved.
 	if err := sweepStaleEmails(ctx, tx, seenEmails); err != nil {
-		return 0, 0, err
+		return 0, 0, nil, err
 	}
 
 	// Drop any orphaned persons (no remaining emails). Locked rows protected
@@ -162,13 +172,13 @@ func PersistClusters(ctx context.Context, db *sql.DB, clusters []cluster) (creat
 		DELETE FROM memento_person
 		WHERE id NOT IN (SELECT DISTINCT person_id FROM memento_person_email)
 	`); err != nil {
-		return 0, 0, err
+		return 0, 0, nil, err
 	}
 
 	if err := tx.Commit(); err != nil {
-		return 0, 0, err
+		return 0, 0, nil, err
 	}
-	return created, linked, nil
+	return created, linked, clusterPersonIDs, nil
 }
 
 // existingMapping holds enough of a memento_person_email row to drive the

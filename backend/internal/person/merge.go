@@ -10,11 +10,12 @@
 // This file surfaces merge candidates by:
 //
 //  1. Reading each person's signature from memento_social_edge.
-//  2. Pre-filtering candidate pairs via shared display-name tokens, so we
-//     never compute O(N²) scores on a 9k-person graph.
+//  2. Pre-filtering candidate pairs via shared display-name/email tokens and
+//     shared non-owner graph neighbors, so we never compute O(N²) scores on a
+//     9k-person graph.
 //  3. Scoring each candidate pair on three independent signals:
 //     - weighted Jaccard of their signatures (the strongest signal)
-//     - name-token Jaccard (cheap protection against false positives)
+//     - name-token Jaccard (soft corroborating evidence)
 //     - temporal overlap of their active windows (catches role changes)
 //  4. Combining the signals into a single score in [0, 1].
 //
@@ -226,7 +227,6 @@ type MergeCandidate struct {
 // FindMergeOptions controls FindMergeCandidates.
 type FindMergeOptions struct {
 	MinSignatureScore float64 // weighted Jaccard threshold (default 0.30)
-	MinNameScore      float64 // name-token Jaccard threshold (default 0.50)
 	MinCombinedScore  float64 // combined-score threshold (default 0.55)
 	TopK              int     // neighbors per signature (default 25)
 	Limit             int     // max candidates returned (default 50)
@@ -237,7 +237,6 @@ type FindMergeOptions struct {
 func DefaultMergeOptions() FindMergeOptions {
 	return FindMergeOptions{
 		MinSignatureScore: 0.30,
-		MinNameScore:      0.50,
 		MinCombinedScore:  0.55,
 		TopK:              250,
 		Limit:             50,
@@ -263,16 +262,12 @@ type personRecord struct {
 // FindMergeCandidates scans memento_person for pairs likely to represent
 // the same human and returns them sorted by combined score, highest first.
 //
-// Performance contract: never quadratic on persons. Uses an inverted
-// token index (display-name tokens + email-local parts) so only pairs
-// that share at least one token are scored. With ~9k persons and Zipf-
-// distributed tokens this is a few thousand comparisons in practice.
+// Performance contract: never quadratic on persons. Uses inverted indexes over
+// display/email tokens and shared graph neighbors so only pairs with some cheap
+// evidence are scored.
 func FindMergeCandidates(ctx context.Context, db *sql.DB, opts FindMergeOptions) ([]MergeCandidate, error) {
 	if opts.MinSignatureScore <= 0 {
 		opts.MinSignatureScore = 0.30
-	}
-	if opts.MinNameScore <= 0 {
-		opts.MinNameScore = 0.50
 	}
 	if opts.MinCombinedScore <= 0 {
 		opts.MinCombinedScore = 0.55
@@ -308,9 +303,24 @@ func FindMergeCandidates(ctx context.Context, db *sql.DB, opts FindMergeOptions)
 		}
 	}
 
-	// Generate unique candidate pairs by walking token buckets.
 	seen := map[[2]int64]bool{} // canonical (min, max)
 	var pairs [][2]int64
+	addPair := func(a, b int64) {
+		if a == b {
+			return
+		}
+		if a > b {
+			a, b = b, a
+		}
+		key := [2]int64{a, b}
+		if seen[key] {
+			return
+		}
+		seen[key] = true
+		pairs = append(pairs, key)
+	}
+
+	// Generate candidate pairs by walking token buckets.
 	for _, ids := range tokenIndex {
 		// Skip buckets larger than 200 — these are noisy generic tokens
 		// like "info" or "team" that won't yield useful merges and would
@@ -320,16 +330,7 @@ func FindMergeCandidates(ctx context.Context, db *sql.DB, opts FindMergeOptions)
 		}
 		for i := 0; i < len(ids); i++ {
 			for j := i + 1; j < len(ids); j++ {
-				a, b := ids[i], ids[j]
-				if a > b {
-					a, b = b, a
-				}
-				key := [2]int64{a, b}
-				if seen[key] {
-					continue
-				}
-				seen[key] = true
-				pairs = append(pairs, key)
+				addPair(ids[i], ids[j])
 			}
 		}
 	}
@@ -337,6 +338,31 @@ func FindMergeCandidates(ctx context.Context, db *sql.DB, opts FindMergeOptions)
 	byID := map[int64]*personRecord{}
 	for i := range persons {
 		byID[persons[i].id] = &persons[i]
+	}
+
+	signatures := map[int64]Signature{}
+	neighborIndex := map[int64][]int64{}
+	for _, p := range persons {
+		rawSig, err := CoRecipientSignature(ctx, db, p.id, opts.TopK)
+		if err != nil {
+			return nil, err
+		}
+		sig := filterOwner(rawSig, ownerIDs)
+		signatures[p.id] = sig
+		for neighborID := range sig {
+			neighborIndex[neighborID] = append(neighborIndex[neighborID], p.id)
+		}
+	}
+	for _, ids := range neighborIndex {
+		if len(ids) > 200 {
+			continue
+		}
+		sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+		for i := 0; i < len(ids); i++ {
+			for j := i + 1; j < len(ids); j++ {
+				addPair(ids[i], ids[j])
+			}
+		}
 	}
 
 	var candidates []MergeCandidate
@@ -347,27 +373,14 @@ func FindMergeCandidates(ctx context.Context, db *sql.DB, opts FindMergeOptions)
 			continue
 		}
 
-		// Cheap name-token check first — skip pairs that don't even share
-		// half their name tokens, regardless of signature.
 		nameScore := jaccardTokens(a.nameTokens, b.nameTokens)
-		if nameScore < opts.MinNameScore {
-			continue
-		}
 
 		// Signature comparison — the strongest signal but the most
-		// expensive query, so deferred behind the name-token gate. Strip
-		// owner edges before scoring; otherwise weighted Jaccard collapses
-		// to ~1.0 for any two contacts who only co-mail with the owner.
-		rawSigA, err := CoRecipientSignature(ctx, db, a.id, opts.TopK)
-		if err != nil {
-			return nil, err
-		}
-		rawSigB, err := CoRecipientSignature(ctx, db, b.id, opts.TopK)
-		if err != nil {
-			return nil, err
-		}
-		sigA := filterOwner(rawSigA, ownerIDs)
-		sigB := filterOwner(rawSigB, ownerIDs)
+		// expensive signal. Strip owner edges before scoring; otherwise
+		// weighted Jaccard collapses to ~1.0 for any two contacts who only
+		// co-mail with the owner.
+		sigA := signatures[a.id]
+		sigB := signatures[b.id]
 		sigJaccard := weightedJaccard(sigA, sigB)
 		sigOverlap := weightedOverlap(sigA, sigB)
 		sigScore := sigJaccard
@@ -379,12 +392,9 @@ func FindMergeCandidates(ctx context.Context, db *sql.DB, opts FindMergeOptions)
 			continue
 		}
 
-		// Count truly shared neighbors (excluding the owner). A pair
-		// with high Jaccard but zero non-owner shared neighbors is a
-		// degenerate match — both signatures are empty post-filter and
-		// shouldn't be surfaced. The existing person-resolve --fuzzy
-		// pass handles name-only matches; Phase 6 must add evidence
-		// beyond that.
+		// Count truly shared neighbors (excluding the owner). A pair with
+		// zero non-owner shared neighbors is a degenerate match and should
+		// not be surfaced by the graph generator.
 		shared := 0
 		for n := range sigA {
 			if _, ok := sigB[n]; ok {
@@ -397,7 +407,7 @@ func FindMergeCandidates(ctx context.Context, db *sql.DB, opts FindMergeOptions)
 
 		tempScore := temporalOverlap(a, b)
 
-		combined := 0.6*sigScore + 0.3*nameScore + 0.1*tempScore
+		combined := 0.65*sigScore + 0.25*nameScore + 0.1*tempScore
 		if combined < opts.MinCombinedScore {
 			continue
 		}

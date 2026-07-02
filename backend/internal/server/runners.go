@@ -65,6 +65,14 @@ func (s *Server) runPeopleRefresh(jobID string) {
 	}
 	s.jobs.Append(jobID, fmt.Sprintf("Wrote %d social edges across %d clusters.", graphResult.EdgeCount, graphResult.ClusterCount), JobRunning)
 
+	s.jobs.Append(jobID, "Persisting merge review suggestions…", JobRunning)
+	mergeCandidates, err := person.GenerateAndPersistGraphSuggestions(ctx, s.db, person.DefaultMergeOptions())
+	if err != nil {
+		s.jobs.Finish(jobID, fmt.Errorf("persist merge suggestions: %w", err))
+		return
+	}
+	s.jobs.Append(jobID, fmt.Sprintf("Queued %d graph-backed merge suggestions.", len(mergeCandidates)), JobRunning)
+
 	s.jobs.Finish(jobID, nil)
 }
 

@@ -52,6 +52,7 @@ func (s *Server) registerRoutes() {
 
 	s.mux.HandleFunc("GET /api/people", s.handleGetPeople)
 	s.mux.HandleFunc("GET /api/people/merge-suggestions", s.handleGetPeopleMergeSuggestions)
+	s.mux.HandleFunc("POST /api/people/merge-decision", s.handlePostPeopleMergeDecision)
 	s.mux.HandleFunc("POST /api/people/merge-apply", s.handlePostPeopleMergeApply)
 	s.mux.HandleFunc("GET /api/people/{slug}/network", s.handleGetPersonNetwork)
 	s.mux.HandleFunc("GET /api/people/{slug}", s.handleGetPersonBySlug)
@@ -447,6 +448,7 @@ type peopleMergeProfile struct {
 type peopleMergeEvidence struct {
 	SharedNeighborCount int     `json:"shared_neighbor_count"`
 	NameSimilarity      float64 `json:"name_similarity"`
+	TokenOverlap        float64 `json:"token_overlap"`
 	SignatureScore      float64 `json:"signature_score"`
 	TemporalScore       float64 `json:"temporal_score"`
 	CombinedScore       float64 `json:"combined_score"`
@@ -457,15 +459,22 @@ type peopleMergeSuggestion struct {
 	Confidence       int                  `json:"confidence"`
 	RecommendedKeep  int64                `json:"recommended_keep_id"`
 	RecommendedMerge int64                `json:"recommended_merge_id"`
+	Sources          []string             `json:"sources"`
+	ScoresPending    bool                 `json:"scores_pending"`
+	Status           string               `json:"status"`
 	People           []peopleMergeProfile `json:"people"`
 	Evidence         peopleMergeEvidence  `json:"evidence"`
 }
 
 func (s *Server) handleGetPeopleMergeSuggestions(w http.ResponseWriter, r *http.Request) {
 	limit := parseIntQuery(r, "limit", 25)
-	opts := person.DefaultMergeOptions()
-	opts.Limit = limit
-	candidates, err := person.FindMergeCandidates(r.Context(), s.db, opts)
+	sortKey := r.URL.Query().Get("sort")
+	status := r.URL.Query().Get("status")
+	suggestions, err := person.ListMergeSuggestions(r.Context(), s.db, person.ListMergeSuggestionOptions{
+		Status: status,
+		Sort:   sortKey,
+		Limit:  limit,
+	})
 	if isNotSetUp(err) {
 		writeJSON(w, http.StatusOK, map[string]any{"suggestions": []any{}})
 		return
@@ -475,34 +484,37 @@ func (s *Server) handleGetPeopleMergeSuggestions(w http.ResponseWriter, r *http.
 		return
 	}
 
-	suggestions := make([]peopleMergeSuggestion, 0, len(candidates))
-	for _, candidate := range candidates {
-		fromProfile, err := s.loadPeopleMergeProfile(r.Context(), candidate.FromID, candidate.FromName, candidate.FromEmail, candidate.FromAliases, candidate.FromLocked)
+	out := make([]peopleMergeSuggestion, 0, len(suggestions))
+	for _, suggestion := range suggestions {
+		aProfile, err := s.loadPeopleMergeProfile(r.Context(), suggestion.PersonAID, "", "", nil, 0)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, err)
 			return
 		}
-		intoProfile, err := s.loadPeopleMergeProfile(r.Context(), candidate.IntoID, candidate.IntoName, candidate.IntoEmail, candidate.IntoAliases, candidate.IntoLocked)
+		bProfile, err := s.loadPeopleMergeProfile(r.Context(), suggestion.PersonBID, "", "", nil, 0)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, err)
 			return
 		}
-		suggestions = append(suggestions, peopleMergeSuggestion{
-			ID:               fmt.Sprintf("%d-%d", candidate.FromID, candidate.IntoID),
-			Confidence:       int(candidate.CombinedScore*100 + 0.5),
-			RecommendedKeep:  candidate.IntoID,
-			RecommendedMerge: candidate.FromID,
-			People:           []peopleMergeProfile{intoProfile, fromProfile},
+		keepID, mergeID := recommendedMergeDirection(aProfile, bProfile)
+		out = append(out, peopleMergeSuggestion{
+			ID:               fmt.Sprintf("%d", suggestion.ID),
+			Confidence:       int(suggestion.CombinedScore*100 + 0.5),
+			RecommendedKeep:  keepID,
+			RecommendedMerge: mergeID,
+			Sources:          suggestion.Sources,
+			ScoresPending:    suggestion.ScoresStale,
+			Status:           suggestion.Status,
+			People:           []peopleMergeProfile{aProfile, bProfile},
 			Evidence: peopleMergeEvidence{
-				SharedNeighborCount: candidate.SharedNeighbor,
-				NameSimilarity:      candidate.NameScore,
-				SignatureScore:      candidate.SignatureScore,
-				TemporalScore:       candidate.TemporalScore,
-				CombinedScore:       candidate.CombinedScore,
+				NameSimilarity: suggestion.NameSimilarity,
+				TokenOverlap:   suggestion.TokenOverlap,
+				SignatureScore: suggestion.SignatureScore,
+				CombinedScore:  suggestion.CombinedScore,
 			},
 		})
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"suggestions": suggestions})
+	writeJSON(w, http.StatusOK, map[string]any{"suggestions": out})
 }
 
 func (s *Server) loadPeopleMergeProfile(ctx context.Context, personID int64, fallbackName, fallbackEmail string, aliases []string, lockedCount int) (peopleMergeProfile, error) {
@@ -564,7 +576,126 @@ func (s *Server) loadPeopleMergeProfile(ctx context.Context, personID int64, fal
 			profile.LastSeen = fallbackLastSeen
 		}
 	}
+	if len(profile.Aliases) == 0 {
+		aliasRows, err := s.db.QueryContext(ctx, `
+			SELECT email_address, locked
+			FROM memento_person_email
+			WHERE person_id = ?
+			ORDER BY locked DESC, email_address ASC
+		`, personID)
+		if err == nil {
+			defer aliasRows.Close()
+			var aliases []string
+			var lockedCount int
+			for aliasRows.Next() {
+				var email string
+				var locked int
+				if err := aliasRows.Scan(&email, &locked); err != nil {
+					return profile, err
+				}
+				aliases = append(aliases, email)
+				if locked != 0 {
+					lockedCount++
+				}
+			}
+			if err := aliasRows.Err(); err != nil {
+				return profile, err
+			}
+			profile.Aliases = aliases
+			profile.LockedCount = lockedCount
+		}
+	}
 	return profile, nil
+}
+
+func recommendedMergeDirection(a, b peopleMergeProfile) (keepID, mergeID int64) {
+	if a.LockedCount != b.LockedCount {
+		if a.LockedCount > b.LockedCount {
+			return a.ID, b.ID
+		}
+		return b.ID, a.ID
+	}
+	if len(a.Aliases) != len(b.Aliases) {
+		if len(a.Aliases) > len(b.Aliases) {
+			return a.ID, b.ID
+		}
+		return b.ID, a.ID
+	}
+	if a.ID < b.ID {
+		return a.ID, b.ID
+	}
+	return b.ID, a.ID
+}
+
+type peopleMergeDecisionRequest struct {
+	ID       string `json:"id"`
+	Decision string `json:"decision"`
+}
+
+func (s *Server) handlePostPeopleMergeDecision(w http.ResponseWriter, r *http.Request) {
+	var req peopleMergeDecisionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	id, err := strconv.ParseInt(strings.TrimSpace(req.ID), 10, 64)
+	if err != nil || id <= 0 {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid suggestion id %q", req.ID))
+		return
+	}
+	decision := strings.TrimSpace(req.Decision)
+	switch decision {
+	case "reject":
+		row, err := person.MarkMergeSuggestionResolved(r.Context(), s.db, id, "rejected")
+		if err != nil {
+			writeError(w, http.StatusUnprocessableEntity, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"suggestion": row})
+	case "accept":
+		row, err := person.GetMergeSuggestion(r.Context(), s.db, id)
+		if err != nil {
+			writeError(w, http.StatusNotFound, err)
+			return
+		}
+		if row.Status != "pending" {
+			writeError(w, http.StatusUnprocessableEntity, fmt.Errorf("merge suggestion %d is already %s", row.ID, row.Status))
+			return
+		}
+		aProfile, err := s.loadPeopleMergeProfile(r.Context(), row.PersonAID, "", "", nil, 0)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+		bProfile, err := s.loadPeopleMergeProfile(r.Context(), row.PersonBID, "", "", nil, 0)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+		keepID, mergeID := recommendedMergeDirection(aProfile, bProfile)
+		result, err := person.MergePersons(r.Context(), s.db, mergeID, keepID)
+		if err != nil {
+			writeError(w, http.StatusUnprocessableEntity, fmt.Errorf("merge %d into %d: %w", mergeID, keepID, err))
+			return
+		}
+		resolved, err := person.MarkMergeSuggestionResolved(r.Context(), s.db, id, "accepted")
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+		if err := person.RejectPendingMergeSuggestionsForPerson(r.Context(), s.db, mergeID); err != nil {
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"suggestion": resolved,
+			"from_id":    mergeID,
+			"into_id":    keepID,
+			"result":     result,
+		})
+	default:
+		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid decision %q", req.Decision))
+	}
 }
 
 type peopleMergeApplyRequest struct {

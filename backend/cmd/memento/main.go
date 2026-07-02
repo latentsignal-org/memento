@@ -145,7 +145,7 @@ Identity pipeline (run by init; re-run individually after archive changes):
   refresh             Rebuild materialized rollup tables + social graph
 
 Review & dedup:
-  person-merge-suggest Surface likely duplicate persons via co-recipient signatures
+  person-merge-suggest List persisted duplicate-person review suggestions
   person-merge        Merge one person into another (transfers emails, facets, notes)
 
 Manual person edits (locked overrides; run refresh afterwards):
@@ -741,17 +741,15 @@ func runPersonRepairNonDeterministic(ctx context.Context, args []string) error {
 	return nil
 }
 
-// runPersonMergeSuggest scans memento_person for likely-duplicate pairs
-// using social-graph signatures, name tokens, and temporal overlap.
-// Read-only — no mutations.
+// runPersonMergeSuggest lists persisted likely-duplicate pairs from the review
+// queue. Read-only: no mutations.
 func runPersonMergeSuggest(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("person-merge-suggest", flag.ContinueOnError)
 	dbPath := fs.String("db", "", "msgvault SQLite database path")
 	jsonOut := fs.Bool("json", false, "emit JSON")
 	limit := fs.Int("limit", 25, "max candidates to surface")
-	minSig := fs.Float64("min-signature", 0.30, "minimum weighted-Jaccard signature score")
-	minName := fs.Float64("min-name", 0.50, "minimum name-token Jaccard score")
-	minCombined := fs.Float64("min-combined", 0.55, "minimum combined score")
+	sortKey := fs.String("sort", "combined", "sort by combined, name_similarity, token_overlap, or signature")
+	status := fs.String("status", "pending", "suggestion status to list")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -765,46 +763,48 @@ func runPersonMergeSuggest(ctx context.Context, args []string) error {
 		return err
 	}
 
-	opts := person.DefaultMergeOptions()
-	opts.MinSignatureScore = *minSig
-	opts.MinNameScore = *minName
-	opts.MinCombinedScore = *minCombined
-	opts.Limit = *limit
-
-	cands, err := person.FindMergeCandidates(ctx, db, opts)
+	suggestions, err := person.ListMergeSuggestions(ctx, db, person.ListMergeSuggestionOptions{
+		Status: *status,
+		Sort:   *sortKey,
+		Limit:  *limit,
+	})
 	if err != nil {
 		return err
 	}
 
 	if *jsonOut {
-		return writeJSON(cands)
+		return writeJSON(suggestions)
 	}
 
-	if len(cands) == 0 {
-		fmt.Println("No merge candidates found.")
-		fmt.Println("Tip: run `./memento refresh` first so the social graph is current.")
+	if len(suggestions) == 0 {
+		fmt.Println("No merge suggestions found.")
+		fmt.Println("Tip: run `./memento refresh` first so the persisted queue is current.")
 		return nil
 	}
 
-	fmt.Printf("Found %d merge candidate(s):\n\n", len(cands))
-	for i, c := range cands {
-		fmt.Printf("[%d] combined=%.3f  signature=%.3f  name=%.3f  temporal=%.3f  shared=%d\n",
-			i+1, c.CombinedScore, c.SignatureScore, c.NameScore, c.TemporalScore, c.SharedNeighbor)
-		fmt.Printf("    FROM person #%d  %s  <%s>", c.FromID, c.FromName, c.FromEmail)
-		if c.FromLocked > 0 {
-			fmt.Printf("  (locked emails: %d)", c.FromLocked)
+	fmt.Printf("Found %d merge suggestion(s):\n\n", len(suggestions))
+	for i, suggestion := range suggestions {
+		a, err := personSummaryLine(ctx, db, suggestion.PersonAID)
+		if err != nil {
+			return fmt.Errorf("look up person %d: %w", suggestion.PersonAID, err)
+		}
+		b, err := personSummaryLine(ctx, db, suggestion.PersonBID)
+		if err != nil {
+			return fmt.Errorf("look up person %d: %w", suggestion.PersonBID, err)
+		}
+		fmt.Printf("[%d] id=%d combined=%.3f signature=%.3f name=%.3f token=%.3f sources=%s",
+			i+1, suggestion.ID, suggestion.CombinedScore, suggestion.SignatureScore,
+			suggestion.NameSimilarity, suggestion.TokenOverlap, strings.Join(suggestion.Sources, ","))
+		if suggestion.ScoresStale {
+			fmt.Print(" scores=pending")
 		}
 		fmt.Println()
-		fmt.Printf("    INTO person #%d  %s  <%s>", c.IntoID, c.IntoName, c.IntoEmail)
-		if c.IntoLocked > 0 {
-			fmt.Printf("  (locked emails: %d)", c.IntoLocked)
-		}
-		fmt.Println()
-		fmt.Printf("    Merge with: ./memento person-merge --from %d --into %d\n", c.FromID, c.IntoID)
+		fmt.Printf("    person #%d  %s\n", suggestion.PersonAID, a)
+		fmt.Printf("    person #%d  %s\n", suggestion.PersonBID, b)
+		fmt.Println("    Decide with: ./memento person-merge --from <id> --into <id>")
 		fmt.Println()
 	}
-	fmt.Println("Review carefully. Graph topology is suggestive, not authoritative.")
-	fmt.Println("After any merge, run `./memento refresh` to rebuild derived tables.")
+	fmt.Println("Review carefully. Name and graph evidence is suggestive, not authoritative.")
 	return nil
 }
 
@@ -866,6 +866,14 @@ func runPersonMerge(ctx context.Context, args []string) error {
 	result, err := person.MergePersons(ctx, db, *fromID, *intoID)
 	if err != nil {
 		return err
+	}
+	if suggestion, err := person.GetMergeSuggestionByPair(ctx, db, *fromID, *intoID); err == nil && suggestion.Status == "pending" {
+		if _, err := person.MarkMergeSuggestionResolved(ctx, db, suggestion.ID, "accepted"); err != nil {
+			return fmt.Errorf("record merge suggestion decision: %w", err)
+		}
+		if err := person.RejectPendingMergeSuggestionsForPerson(ctx, db, *fromID); err != nil {
+			return fmt.Errorf("resolve stale merge suggestions: %w", err)
+		}
 	}
 	fmt.Println()
 	fmt.Println("Merge complete.")

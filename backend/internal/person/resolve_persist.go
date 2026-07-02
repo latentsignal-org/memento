@@ -20,11 +20,14 @@ func ResolveAndPersist(ctx context.Context, reader *msgvault.Reader, db *sql.DB,
 	if err != nil {
 		return ResolveReport{}, err
 	}
-	created, linked, err := PersistClusters(ctx, db, clusters)
+	created, linked, clusterPersonIDs, err := PersistClustersWithMapping(ctx, db, clusters)
 	if err != nil {
 		return ResolveReport{}, err
 	}
 	report.PersonsCreated = created
 	report.EmailsLinked = linked
+	if _, err := PersistResolveSuggestions(ctx, db, report.Suggestions, clusterPersonIDs); err != nil {
+		return ResolveReport{}, fmt.Errorf("persist merge suggestions: %w", err)
+	}
 	return report, nil
 }
