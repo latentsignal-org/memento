@@ -359,6 +359,53 @@ func TestMergePersons_HappyPath(t *testing.T) {
 	}
 }
 
+func TestMergePersons_ResolvesAffectedSuggestions(t *testing.T) {
+	db := newMergeTestDB(t)
+	ctx := context.Background()
+	from := seedPerson(t, db, "Jane Work", "jane@work.example")
+	into := seedPerson(t, db, "Jane Home", "jane@home.example")
+	other := seedPerson(t, db, "Janet Other", "janet@example.com")
+	seedEmail(t, db, "jane@work.example", from, false)
+	seedEmail(t, db, "jane@home.example", into, false)
+	seedEmail(t, db, "janet@example.com", other, false)
+
+	for _, input := range []MergeSuggestionInput{
+		{PersonAID: from, PersonBID: into, Sources: []string{LinkSourceExactName}, NameSimilarity: 1, CombinedScore: 1, ScoresStale: true},
+		{PersonAID: from, PersonBID: other, Sources: []string{LinkSourceJaroWinkler}, NameSimilarity: 0.95, CombinedScore: 0.95, ScoresStale: true},
+		{PersonAID: into, PersonBID: other, Sources: []string{LinkSourceJaccard}, TokenOverlap: 0.8, CombinedScore: 0.8, ScoresStale: true},
+	} {
+		if err := UpsertMergeSuggestion(ctx, db, input); err != nil {
+			t.Fatalf("upsert suggestion: %v", err)
+		}
+	}
+
+	if _, err := MergePersons(ctx, db, from, into); err != nil {
+		t.Fatalf("MergePersons: %v", err)
+	}
+
+	accepted, err := ListMergeSuggestions(ctx, db, ListMergeSuggestionOptions{Status: "accepted"})
+	if err != nil {
+		t.Fatalf("list accepted: %v", err)
+	}
+	if len(accepted) != 1 || accepted[0].PersonAID != from || accepted[0].PersonBID != into {
+		t.Fatalf("accepted suggestions = %+v, want merged pair only", accepted)
+	}
+	rejected, err := ListMergeSuggestions(ctx, db, ListMergeSuggestionOptions{Status: "rejected"})
+	if err != nil {
+		t.Fatalf("list rejected: %v", err)
+	}
+	if len(rejected) != 1 || rejected[0].PersonAID != from || rejected[0].PersonBID != other {
+		t.Fatalf("rejected suggestions = %+v, want stale from/other pair only", rejected)
+	}
+	pending, err := ListMergeSuggestions(ctx, db, ListMergeSuggestionOptions{})
+	if err != nil {
+		t.Fatalf("list pending: %v", err)
+	}
+	if len(pending) != 1 || pending[0].PersonAID != into || pending[0].PersonBID != other {
+		t.Fatalf("pending suggestions = %+v, want into/other pair to remain", pending)
+	}
+}
+
 // TestMergePersons_RejectsSameID guards against the identity merge.
 func TestMergePersons_RejectsSameID(t *testing.T) {
 	db := newMergeTestDB(t)

@@ -305,7 +305,7 @@ export default function PeopleMergeReviewPage() {
                                             <div className="min-w-0">
                                                 <div className="flex flex-wrap items-center gap-2">
                                                     <span className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${scoreTone(candidate.confidence)}`}>
-                                                        {candidate.confidence}% best match
+                                                        {candidate.scores_pending ? "Best match pending" : `${candidate.confidence}% best match`}
                                                     </span>
                                                     {candidate.scores_pending && (
                                                         <span className="rounded-full bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">
@@ -383,7 +383,9 @@ export default function PeopleMergeReviewPage() {
                                             <div className="mt-5 grid grid-cols-1 gap-4 rounded-2xl border border-outline-variant/40 bg-white p-4 md:grid-cols-4">
                                                 <div title={`Combined score: ${candidate.evidence.combined_score.toFixed(3)}`}>
                                                     <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Best match</p>
-                                                    <p className="mt-1 text-headline-sm font-headline-md text-primary">{formatPercent(candidate.evidence.combined_score)}</p>
+                                                    <p className="mt-1 text-headline-sm font-headline-md text-primary">
+                                                        {candidate.scores_pending ? "pending" : formatPercent(candidate.evidence.combined_score)}
+                                                    </p>
                                                 </div>
                                                 <div title={`Mutual contacts score: ${candidate.evidence.signature_score.toFixed(3)}`}>
                                                     <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Mutual contacts</p>

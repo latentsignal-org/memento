@@ -867,14 +867,6 @@ func runPersonMerge(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	if suggestion, err := person.GetMergeSuggestionByPair(ctx, db, *fromID, *intoID); err == nil && suggestion.Status == "pending" {
-		if _, err := person.MarkMergeSuggestionResolved(ctx, db, suggestion.ID, "accepted"); err != nil {
-			return fmt.Errorf("record merge suggestion decision: %w", err)
-		}
-		if err := person.RejectPendingMergeSuggestionsForPerson(ctx, db, *fromID); err != nil {
-			return fmt.Errorf("resolve stale merge suggestions: %w", err)
-		}
-	}
 	fmt.Println()
 	fmt.Println("Merge complete.")
 	fmt.Printf("  Emails transferred:           %d\n", result.EmailsTransferred)

@@ -488,11 +488,19 @@ func (s *Server) handleGetPeopleMergeSuggestions(w http.ResponseWriter, r *http.
 	for _, suggestion := range suggestions {
 		aProfile, err := s.loadPeopleMergeProfile(r.Context(), suggestion.PersonAID, "", "", nil, 0)
 		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				_, _ = person.MarkMergeSuggestionResolved(r.Context(), s.db, suggestion.ID, "rejected")
+				continue
+			}
 			writeError(w, http.StatusInternalServerError, err)
 			return
 		}
 		bProfile, err := s.loadPeopleMergeProfile(r.Context(), suggestion.PersonBID, "", "", nil, 0)
 		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				_, _ = person.MarkMergeSuggestionResolved(r.Context(), s.db, suggestion.ID, "rejected")
+				continue
+			}
 			writeError(w, http.StatusInternalServerError, err)
 			return
 		}
@@ -664,11 +672,21 @@ func (s *Server) handlePostPeopleMergeDecision(w http.ResponseWriter, r *http.Re
 		}
 		aProfile, err := s.loadPeopleMergeProfile(r.Context(), row.PersonAID, "", "", nil, 0)
 		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				_, _ = person.MarkMergeSuggestionResolved(r.Context(), s.db, id, "rejected")
+				writeError(w, http.StatusNotFound, fmt.Errorf("merge suggestion %d references a missing person", row.ID))
+				return
+			}
 			writeError(w, http.StatusInternalServerError, err)
 			return
 		}
 		bProfile, err := s.loadPeopleMergeProfile(r.Context(), row.PersonBID, "", "", nil, 0)
 		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				_, _ = person.MarkMergeSuggestionResolved(r.Context(), s.db, id, "rejected")
+				writeError(w, http.StatusNotFound, fmt.Errorf("merge suggestion %d references a missing person", row.ID))
+				return
+			}
 			writeError(w, http.StatusInternalServerError, err)
 			return
 		}
@@ -678,12 +696,8 @@ func (s *Server) handlePostPeopleMergeDecision(w http.ResponseWriter, r *http.Re
 			writeError(w, http.StatusUnprocessableEntity, fmt.Errorf("merge %d into %d: %w", mergeID, keepID, err))
 			return
 		}
-		resolved, err := person.MarkMergeSuggestionResolved(r.Context(), s.db, id, "accepted")
+		resolved, err := person.GetMergeSuggestion(r.Context(), s.db, id)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, err)
-			return
-		}
-		if err := person.RejectPendingMergeSuggestionsForPerson(r.Context(), s.db, mergeID); err != nil {
 			writeError(w, http.StatusInternalServerError, err)
 			return
 		}

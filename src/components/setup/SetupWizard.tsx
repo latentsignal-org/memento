@@ -31,6 +31,10 @@ async function readJSON<T>(response: Response): Promise<T> {
     return body;
 }
 
+type MergeSuggestionsResponse = {
+    suggestions?: Array<{ id: string }>;
+};
+
 export function SetupWizard() {
     const [step, setStep] = useState(1);
     const [maxStep, setMaxStep] = useState(1);
@@ -49,6 +53,7 @@ export function SetupWizard() {
     const [testResult, setTestResult] = useState<"" | "ok" | "fail">("");
     const [progress, setProgress] = useState<InitProgress[]>([]);
     const [summary, setSummary] = useState<SetupSummary | null>(null);
+    const [pendingMergeCount, setPendingMergeCount] = useState<number | null>(null);
 
     const goToStep = useCallback((nextStep: number) => {
         setStep(nextStep);
@@ -58,6 +63,17 @@ export function SetupWizard() {
     const selectRailStep = useCallback((nextStep: number) => {
         if (nextStep <= maxStep) setStep(nextStep);
     }, [maxStep]);
+
+    const loadPendingMergeCount = useCallback(async () => {
+        try {
+            const data = await readJSON<MergeSuggestionsResponse>(
+                await fetch("/api/people/merge-suggestions?limit=1000", {cache: "no-store"}),
+            );
+            setPendingMergeCount((data.suggestions || []).length);
+        } catch {
+            setPendingMergeCount(null);
+        }
+    }, []);
 
     const loadStatus = async () => {
         setLoading(true);
@@ -72,6 +88,7 @@ export function SetupWizard() {
             setModel(next.provider.model || "gemini-3.5-flash");
             setBaseURL(next.provider.baseUrl || "");
             if (next.initialized) goToStep(6);
+            if (next.initialized) void loadPendingMergeCount();
         } catch (cause) {
             setError(cause instanceof Error ? cause.message : String(cause));
         } finally {
@@ -93,6 +110,7 @@ export function SetupWizard() {
                 setModel(next.provider.model || "gemini-3.5-flash");
                 setBaseURL(next.provider.baseUrl || "");
                 if (next.initialized) goToStep(6);
+                if (next.initialized) void loadPendingMergeCount();
             })
             .catch((cause) => {
                 if (!cancelled) setError(cause instanceof Error ? cause.message : String(cause));
@@ -100,7 +118,7 @@ export function SetupWizard() {
         return () => {
             cancelled = true;
         };
-    }, [goToStep]);
+    }, [goToStep, loadPendingMergeCount]);
 
     const saveEnv = async (body: Record<string, unknown>) => {
         return readJSON<{ ok: boolean; restartRequired: boolean }>(
@@ -256,6 +274,7 @@ export function SetupWizard() {
                 if (item.status === "succeeded") {
                     source.close();
                     setSummary(item.result ?? null);
+                    void loadPendingMergeCount();
                     goToStep(6);
                     setLoading(false);
                 } else if (item.status === "failed") {
@@ -272,6 +291,7 @@ export function SetupWizard() {
                     );
                     if (snapshot.status === "succeeded") {
                         setSummary(snapshot.result ?? null);
+                        void loadPendingMergeCount();
                         goToStep(6);
                     } else if (snapshot.status === "failed") {
                         setError(snapshot.error || "Initialization failed.");
@@ -484,12 +504,12 @@ export function SetupWizard() {
                                 <div
                                     className="mt-1 text-label-caps font-label-caps text-on-surface-variant">{label}</div>
                             </div>)}</div> : null}
-                        {summary && summary.duplicates > 0 ? (
+                        {pendingMergeCount !== null && pendingMergeCount > 0 ? (
                             <Link
                                 href="/people/merge-review"
                                 className="mt-4 inline-flex items-center gap-2 rounded-lg border border-primary/25 bg-primary-fixed px-3 py-2 text-sm font-semibold text-on-primary-fixed-variant"
                             >
-                                Review merge candidates
+                                Review {pendingMergeCount} merge {pendingMergeCount === 1 ? "candidate" : "candidates"}
                                 <span className="material-symbols-outlined text-[17px]">arrow_forward</span>
                             </Link>
                         ) : null}

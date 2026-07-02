@@ -831,7 +831,31 @@ func MergePersons(ctx context.Context, db *sql.DB, fromID, intoID int64) (MergeR
 		result.ProjectMembersTransferred = int(n)
 	}
 
-	// 6. Touch the target person's updated_at so downstream consumers
+	pairA, pairB := fromID, intoID
+	if pairA > pairB {
+		pairA, pairB = pairB, pairA
+	}
+
+	// 6. Resolve pending merge suggestions affected by this merge while
+	//    both person IDs still exist. The merged pair is accepted; other
+	//    pending suggestions involving the absorbed person are no longer
+	//    actionable and should not become ghost rows in the review queue.
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE memento_merge_suggestion
+		SET status = 'accepted', resolved_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+		WHERE status = 'pending' AND person_a_id = ? AND person_b_id = ?
+	`, pairA, pairB); err != nil {
+		return result, fmt.Errorf("accept merge suggestion: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE memento_merge_suggestion
+		SET status = 'rejected', resolved_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+		WHERE status = 'pending' AND (person_a_id = ? OR person_b_id = ?)
+	`, fromID, fromID); err != nil {
+		return result, fmt.Errorf("resolve stale merge suggestions: %w", err)
+	}
+
+	// 7. Touch the target person's updated_at so downstream consumers
 	//    notice the change.
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE memento_person SET updated_at = ? WHERE id = ?
@@ -839,7 +863,7 @@ func MergePersons(ctx context.Context, db *sql.DB, fromID, intoID int64) (MergeR
 		return result, fmt.Errorf("touch into: %w", err)
 	}
 
-	// 7. Delete the source person. memento_people_candidates,
+	// 8. Delete the source person. memento_people_candidates,
 	//    memento_people_report, memento_social_edge, and
 	//    memento_social_metric cascade. They'll be rebuilt on refresh.
 	if _, err := tx.ExecContext(ctx, `
