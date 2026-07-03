@@ -120,18 +120,14 @@ function strongestEvidenceLabel(candidate: MergeCandidate) {
     return strongest.label;
 }
 
-function suggestionReason(candidate: MergeCandidate) {
+function topSignalLabel(candidate: MergeCandidate) {
     if (hasSource(candidate, "exact_name")) {
-        return "Reason: same display name appears across separate profiles.";
+        return "Same display name";
     }
     if (hasSource(candidate, "forwarder_unwrap")) {
-        return "Reason: forwarded display-name cleanup points to the same name.";
+        return "Forwarded name";
     }
-    const strongest = strongestEvidenceLabel(candidate);
-    if (hasGraphSignal(candidate)) {
-        return `Reason: ${strongest} is the strongest signal, with supporting social-graph evidence.`;
-    }
-    return `Reason: ${strongest} is the strongest name signal.`;
+    return strongestEvidenceLabel(candidate);
 }
 
 function evidenceRows(candidate: MergeCandidate) {
@@ -380,15 +376,15 @@ export default function PeopleMergeReviewPage() {
                                                             Match score {candidate.confidence}%
                                                         </span>
                                                     )}
+                                                    <span className="rounded-full bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">
+                                                        Top signal: {topSignalLabel(candidate)}
+                                                    </span>
                                                 </div>
                                                 <h2 className="mt-3 text-headline-md font-headline-md font-bold text-primary">
                                                     {candidate.people.map((person) => person.name).join(" + ")}
                                                 </h2>
                                                 <p className="mt-1 text-ui-small text-on-surface-variant">
-                                                    Keep <strong>{keepPerson.name}</strong>; merge <strong>{mergePerson.name}</strong>.
-                                                </p>
-                                                <p className="mt-2 text-ui-small text-on-surface-variant">
-                                                    {suggestionReason(candidate)}
+                                                    If accepted: merge <strong>{mergePerson.name}</strong> into <strong>{keepPerson.name}</strong>.
                                                 </p>
                                             </div>
                                         </div>
