@@ -103,7 +103,7 @@ func TestRepairNonDeterministicLinks_PreservesSafeAndDeterministicLinks(t *testi
 	seedRepairEmail(t, db, personID, "jsmith@gmail.com", "Jane Smith", LinkSourceSingleton, false)
 	seedRepairEmail(t, db, personID, "j.smith@gmail.com", "Jane Smith", LinkSourceExactName, false)
 	seedRepairEmail(t, db, personID, "jane.manual@example.com", "Jane Manual", LinkSourceManual, true)
-	seedRepairEmail(t, db, personID, "jane.signature@example.com", "Jane Signature", LinkSourceSignatureMerge, false)
+	seedRepairEmail(t, db, personID, "jane.manualmerge@example.com", "Jane Manual Merge", LinkSourceManualMerge, false)
 	seedRepairEmail(t, db, personID, "jane.typo@example.com", "Jane Smyth", LinkSourceJaroWinkler, false)
 
 	report, err := RepairNonDeterministicLinks(ctx, db, RepairOptions{Apply: true})
@@ -114,7 +114,7 @@ func TestRepairNonDeterministicLinks_PreservesSafeAndDeterministicLinks(t *testi
 		t.Fatalf("emails split = %d, want 1: %+v", report.EmailsSplit, report)
 	}
 	mapping := participantIDsForEmails(t, db)
-	for _, email := range []string{"jsmith@gmail.com", "j.smith@gmail.com", "jane.manual@example.com", "jane.signature@example.com"} {
+	for _, email := range []string{"jsmith@gmail.com", "j.smith@gmail.com", "jane.manual@example.com", "jane.manualmerge@example.com"} {
 		if mapping[email] != personID {
 			t.Fatalf("%s moved to %d, want original person %d", email, mapping[email], personID)
 		}

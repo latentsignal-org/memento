@@ -525,15 +525,15 @@ POST /api/people/merge-decision
         <p>The GET route loads pending suggestions, then loads a compact profile for each person. If a row points at a dismissed or missing person, the route marks it rejected and skips it, avoiding ghost rows in the review queue. The POST route either marks a row rejected or accepts it by choosing a keep/merge direction and calling <code>MergePersons</code>.</p>
 
         <h3>7. Accepting a suggestion is transactional</h3>
-        <p><code>MergePersons</code> transfers the absorbed person's data into the surviving person in one transaction: email aliases, facets, narratives, notes, and project memberships. It marks transferred emails as locked <code>signature_merge</code>, because a user confirmed the identity. It then accepts the pair's pending suggestion and rejects other pending rows involving the absorbed person.</p>
+        <p><code>MergePersons</code> transfers the absorbed person's data into the surviving person in one transaction: email aliases, facets, narratives, notes, and project memberships. It marks transferred emails as locked <code>manual_merge</code>, because a user confirmed the identity. It then accepts the pair's pending suggestion and rejects other pending rows involving the absorbed person.</p>
 
         <div class="callout warn">
-          <strong>Terminology caveat:</strong> <code>signature_merge</code> is a legacy-ish name. In this branch, an accepted review merge is still a manual user decision, even if the original suggestion came from name match, forwarder evidence, fuzzy spelling, token overlap, or graph signature. The value effectively means "confirmed via the duplicate-review system and protected from future resolver changes." A clearer future name would be <code>review_merge</code> or <code>manual_merge</code>.
+          <strong>Terminology note:</strong> earlier drafts of this branch used <code>signature_merge</code> for accepted review merges. That was misleading because an accepted review merge is a manual user decision, even if the original suggestion came from name match, forwarder evidence, fuzzy spelling, token overlap, or graph signature. The stored source is now <code>manual_merge</code>, meaning "confirmed by the user via duplicate review and protected from future resolver changes."
         </div>
 
         <pre>// During MergePersons:
 // 1. Move emails to the survivor.
-// 2. Mark moved emails locked with link_source = signature_merge.
+// 2. Mark moved emails locked with link_source = manual_merge.
 // 3. Move facets, narratives, notes, and project memberships.
 // 4. Mark the accepted suggestion accepted.
 // 5. Reject stale suggestions involving the absorbed person.
@@ -580,7 +580,7 @@ POST /api/people/merge-decision
         <h3>9. Legacy over-merges get an explicit repair command</h3>
         <p><code>backend/internal/person/repair.go</code> adds <code>person-repair-nondeterministic</code>. It scans existing <code>memento_person_email</code> rows and looks for unlocked links whose source was one of the old unsafe resolver signals: <code>exact_name</code>, <code>forwarder_unwrap</code>, <code>jaro_winkler</code>, or <code>jaccard</code>.</p>
 
-        <p>The command plans splits by normalized email group. For each person, it keeps the safest group: the one containing the primary email if present, otherwise a locked/manual/signature anchor, otherwise the largest and oldest deterministic group. Unsafe non-equivalent groups are split into new locked/manual people when <code>--apply</code> is used.</p>
+        <p>The command plans splits by normalized email group. For each person, it keeps the safest group: the one containing the primary email if present, otherwise a locked/manual/manual-merge anchor, otherwise the largest and oldest deterministic group. Unsafe non-equivalent groups are split into new locked/manual people when <code>--apply</code> is used.</p>
 
         <pre>./memento person-repair-nondeterministic --dry-run
 ./memento person-repair-nondeterministic --apply</pre>
@@ -643,7 +643,7 @@ POST /api/people/merge-decision
           </div>
           <div class="card">
             <h4>Manual decisions survive resolver reruns</h4>
-            <p>Locked email mappings are skipped by the resolver, and user-confirmed merge emails are locked as <code>signature_merge</code>.</p>
+            <p>Locked email mappings are skipped by the resolver, and user-confirmed merge emails are locked as <code>manual_merge</code>.</p>
           </div>
           <div class="card">
             <h4>Repair preserves anchors</h4>
@@ -694,7 +694,7 @@ POST /api/people/merge-decision
         </div>
 
         <div class="quiz-item" data-answer="a">
-          <h3>4. When accepting a merge, why are transferred emails marked <code>signature_merge</code> and locked?</h3>
+          <h3>4. When accepting a merge, why are transferred emails marked <code>manual_merge</code> and locked?</h3>
           <div class="answers">
             <button data-choice="a">Because a user-confirmed merge should survive future resolver runs.</button>
             <button data-choice="b">Because graph signatures are always deterministic mailbox evidence.</button>

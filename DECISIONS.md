@@ -15,7 +15,7 @@ for human review, not automatic merge evidence.
 
 Existing unlocked resolver links created from non-deterministic evidence are repaired by
 an explicit dry-run/apply split flow. Manual links, locked rows, user-confirmed
-signature merges, and deterministic normalized-email groups are preserved.
+manual merges, and deterministic normalized-email groups are preserved.
 
 ## 2026-06-16 — Generated markdown must not trigger arbitrary browser egress
 

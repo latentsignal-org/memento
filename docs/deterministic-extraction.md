@@ -177,10 +177,10 @@ queries, and historical reporting.
 not part of normal resolver persistence.
 
 The command scans `memento_person_email` and targets only unlocked rows whose source is `exact_name`,
-`forwarder_unwrap`, `jaro_winkler`, or `jaccard`. It preserves locked rows, manual rows, `signature_merge` rows, and
+`forwarder_unwrap`, `jaro_winkler`, or `jaccard`. It preserves locked rows, manual rows, `manual_merge` rows, and
 deterministic normalized-email groups, including plus-tag and Gmail/Googlemail dot equivalents. For each person it keeps
 the group containing the person's primary email; if there is no primary-email group, it falls back to a locked/manual or
-signature anchor, then the largest/oldest deterministic group.
+manual-merge anchor, then the largest/oldest deterministic group.
 
 `--dry-run` reports persons scanned, persons affected, split counts by prior source, and the emails that would move.
 `--apply` splits unsafe non-equivalent emails into new locked/manual person rows with a repair note.

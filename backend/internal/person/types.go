@@ -10,7 +10,7 @@ const (
 	LinkSourceJaccard         = "jaccard"
 	LinkSourceManual          = "manual"
 	LinkSourceSingleton       = "singleton"
-	LinkSourceSignatureMerge  = "signature_merge"
+	LinkSourceManualMerge     = "manual_merge"
 )
 
 // Person is one canonical human (or, for non-human clusters that survive

@@ -699,7 +699,7 @@ func round3(f float64) float64 {
 // next time `./memento refresh` runs.
 //
 // Locked emails on `fromID` are transferred and remain locked, with
-// link_source rewritten to LinkSourceSignatureMerge. The user invoked the
+// link_source rewritten to LinkSourceManualMerge. The user invoked the
 // merge; they own the consequences.
 //
 // Returns the number of rows transferred per table.
@@ -738,7 +738,7 @@ func MergePersons(ctx context.Context, db *sql.DB, fromID, intoID int64) (MergeR
 
 	now := time.Now().UTC().Format(time.RFC3339)
 
-	// 1. Transfer emails. Mark them as locked + signature_merge so the
+	// 1. Transfer emails. Mark them as locked + manual_merge so the
 	//    next resolver run leaves them alone — this was a user decision.
 	res, err := tx.ExecContext(ctx, `
 		UPDATE memento_person_email
@@ -747,7 +747,7 @@ func MergePersons(ctx context.Context, db *sql.DB, fromID, intoID int64) (MergeR
 		    link_source = ?,
 		    updated_at = ?
 		WHERE person_id = ?
-	`, intoID, LinkSourceSignatureMerge, now, fromID)
+	`, intoID, LinkSourceManualMerge, now, fromID)
 	if err != nil {
 		return result, fmt.Errorf("transfer emails: %w", err)
 	}

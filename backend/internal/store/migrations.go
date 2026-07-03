@@ -786,6 +786,15 @@ CREATE INDEX IF NOT EXISTS idx_memento_merge_suggestion_status
   ON memento_merge_suggestion(status, combined_score DESC, updated_at DESC);
 `,
 	},
+	{
+		Version: 28,
+		Name:    "rename_signature_merge_link_source",
+		SQL: `
+UPDATE memento_person_email
+SET link_source = 'manual_merge'
+WHERE link_source = 'signature_merge';
+`,
+	},
 }
 
 func Open(path string) (*sql.DB, error) {

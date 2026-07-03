@@ -246,7 +246,7 @@ func retainedRepairGroup(p repairPerson, groups map[string][]repairEmail) string
 
 func groupHasRepairAnchor(emails []repairEmail) bool {
 	for _, email := range emails {
-		if email.locked || email.source == LinkSourceManual || email.source == LinkSourceSignatureMerge {
+		if email.locked || email.source == LinkSourceManual || email.source == LinkSourceManualMerge {
 			return true
 		}
 	}

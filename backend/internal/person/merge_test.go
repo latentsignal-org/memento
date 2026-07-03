@@ -298,11 +298,11 @@ func TestMergePersons_HappyPath(t *testing.T) {
 
 	// Emails: both ann@a.com and ann@a-alt.com transferred and locked.
 	var emailRows int
-	if err := db.QueryRow(`SELECT COUNT(*) FROM memento_person_email WHERE person_id = ? AND locked = 1 AND link_source = ?`, into, LinkSourceSignatureMerge).Scan(&emailRows); err != nil {
+	if err := db.QueryRow(`SELECT COUNT(*) FROM memento_person_email WHERE person_id = ? AND locked = 1 AND link_source = ?`, into, LinkSourceManualMerge).Scan(&emailRows); err != nil {
 		t.Fatalf("count emails: %v", err)
 	}
 	if emailRows != 2 {
-		t.Errorf("emails transferred = %d, want 2 (locked + signature_merge)", emailRows)
+		t.Errorf("emails transferred = %d, want 2 (locked + manual_merge)", emailRows)
 	}
 	if result.EmailsTransferred != 2 {
 		t.Errorf("result.EmailsTransferred = %d, want 2", result.EmailsTransferred)
