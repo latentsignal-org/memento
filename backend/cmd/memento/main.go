@@ -1546,6 +1546,14 @@ func runRefresh(ctx context.Context, args []string) error {
 			return fmt.Errorf("social: %w", err)
 		}
 		fmt.Printf("%d edges, %d clusters [%s]\n", result.EdgeCount, result.ClusterCount, time.Since(t0).Round(time.Millisecond))
+
+		fmt.Print("Persisting merge suggestions… ")
+		t0 = time.Now()
+		mergeCandidates, err := person.GenerateAndPersistGraphSuggestions(ctx, db, person.DefaultMergeOptions())
+		if err != nil {
+			return fmt.Errorf("merge suggestions: %w", err)
+		}
+		fmt.Printf("%d graph-backed suggestions [%s]\n", len(mergeCandidates), time.Since(t0).Round(time.Millisecond))
 	}
 	return nil
 }
