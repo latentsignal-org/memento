@@ -113,3 +113,44 @@ func TestGenerateAndPersistGraphSuggestions_DivergentNames(t *testing.T) {
 		t.Fatalf("unexpected graph suggestion: %+v", found)
 	}
 }
+
+func TestPersistGraphMergeCandidates_ClearsStaleGraphOnlyPendingRows(t *testing.T) {
+	db := newMergeTestDB(t)
+	ctx := context.Background()
+	a := seedPerson(t, db, "Jane Smith", "jane@home.example")
+	b := seedPerson(t, db, "Janet Smyth", "janet@work.example")
+	c := seedPerson(t, db, "Alex Lee", "alex@example")
+	d := seedPerson(t, db, "Alex Li", "alex.li@example")
+
+	if err := UpsertMergeSuggestion(ctx, db, MergeSuggestionInput{
+		PersonAID:      a,
+		PersonBID:      b,
+		Sources:        []string{LinkSourceGraph},
+		SignatureScore: 1,
+		CombinedScore:  0.7,
+		ScoresStale:    false,
+	}); err != nil {
+		t.Fatalf("upsert graph suggestion: %v", err)
+	}
+	if err := UpsertMergeSuggestion(ctx, db, MergeSuggestionInput{
+		PersonAID:      c,
+		PersonBID:      d,
+		Sources:        []string{LinkSourceJaroWinkler},
+		NameSimilarity: 0.95,
+		CombinedScore:  0.95,
+		ScoresStale:    true,
+	}); err != nil {
+		t.Fatalf("upsert name suggestion: %v", err)
+	}
+
+	if err := PersistGraphMergeCandidates(ctx, db, nil); err != nil {
+		t.Fatalf("persist empty graph candidates: %v", err)
+	}
+	rows, err := ListMergeSuggestions(ctx, db, ListMergeSuggestionOptions{})
+	if err != nil {
+		t.Fatalf("list pending: %v", err)
+	}
+	if len(rows) != 1 || !containsString(rows[0].Sources, LinkSourceJaroWinkler) {
+		t.Fatalf("pending rows = %+v, want only the name-sourced suggestion", rows)
+	}
+}

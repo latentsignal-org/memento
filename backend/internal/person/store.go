@@ -106,6 +106,8 @@ func PersistClustersWithMapping(ctx context.Context, db *sql.DB, clusters []clus
 	defer upsertEmail.Close()
 
 	seenEmails := make(map[string]bool, 2048)
+	participantByEmail := make(map[string]msgParticipantForPrimary, 2048)
+	affectedPersons := map[int64]bool{}
 
 	for _, c := range clusters {
 		if len(c.Members) == 0 {
@@ -132,11 +134,17 @@ func PersistClustersWithMapping(ctx context.Context, db *sql.DB, clusters []clus
 			created++
 		}
 		clusterPersonIDs[c.ID] = personID
+		affectedPersons[personID] = true
 
 		singleton := len(c.Members) == 1
 		for _, m := range c.Members {
 			email := strings.ToLower(m.Participant.EmailAddress)
 			seenEmails[email] = true
+			participantByEmail[email] = msgParticipantForPrimary{
+				EmailAddress: email,
+				DisplayName:  m.Participant.DisplayName,
+				MessageCount: m.Participant.MessageCount,
+			}
 			source := m.LinkSource
 			confidence := m.Confidence
 			if source == "" || singleton {
@@ -175,10 +183,87 @@ func PersistClustersWithMapping(ctx context.Context, db *sql.DB, clusters []clus
 		return 0, 0, nil, err
 	}
 
+	if err := refreshPrimaryEmails(ctx, tx, affectedPersons, participantByEmail, now); err != nil {
+		return 0, 0, nil, err
+	}
+
 	if err := tx.Commit(); err != nil {
 		return 0, 0, nil, err
 	}
 	return created, linked, clusterPersonIDs, nil
+}
+
+type msgParticipantForPrimary struct {
+	EmailAddress string
+	DisplayName  string
+	MessageCount int64
+}
+
+func refreshPrimaryEmails(ctx context.Context, tx *sql.Tx, personIDs map[int64]bool, participants map[string]msgParticipantForPrimary, now string) error {
+	for personID := range personIDs {
+		email, err := primaryEmailForPerson(ctx, tx, personID, participants)
+		if err != nil {
+			return err
+		}
+		if email == "" {
+			continue
+		}
+		if _, err := tx.ExecContext(ctx, `
+			UPDATE memento_person
+			SET primary_email = ?, updated_at = ?
+			WHERE id = ?
+		`, email, now, personID); err != nil {
+			return fmt.Errorf("refresh primary email for person %d: %w", personID, err)
+		}
+	}
+	return nil
+}
+
+func primaryEmailForPerson(ctx context.Context, tx *sql.Tx, personID int64, participants map[string]msgParticipantForPrimary) (string, error) {
+	rows, err := tx.QueryContext(ctx, `
+		SELECT lower(email_address), display_name, locked
+		FROM memento_person_email
+		WHERE person_id = ?
+	`, personID)
+	if err != nil {
+		return "", err
+	}
+	defer rows.Close()
+
+	var best string
+	var bestScore int64 = -1 << 62
+	for rows.Next() {
+		var email, displayName string
+		var locked int64
+		if err := rows.Scan(&email, &displayName, &locked); err != nil {
+			return "", err
+		}
+		p := participants[email]
+		if displayName == "" {
+			displayName = p.DisplayName
+		}
+		score := primaryEmailScore(email, displayName, p.MessageCount, locked != 0)
+		if score > bestScore || (score == bestScore && (best == "" || email < best)) {
+			best = email
+			bestScore = score
+		}
+	}
+	return best, rows.Err()
+}
+
+func primaryEmailScore(email, displayName string, messageCount int64, locked bool) int64 {
+	score := messageCount
+	local := emailLocal(email)
+	if !isSystemLocalPart(local) {
+		score += 10000
+	}
+	if strings.TrimSpace(displayName) != "" && !strings.Contains(displayName, "@") {
+		score += 1000
+	}
+	if locked {
+		score += 100
+	}
+	return score
 }
 
 // existingMapping holds enough of a memento_person_email row to drive the

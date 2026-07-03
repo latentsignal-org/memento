@@ -43,6 +43,7 @@ type ListMergeSuggestionOptions struct {
 	Status string
 	Sort   string
 	Limit  int
+	Offset int
 }
 
 func PersistResolveSuggestions(ctx context.Context, db *sql.DB, suggestions []ResolveSuggestion, clusterPersonIDs map[int]int64) (int, error) {
@@ -85,6 +86,9 @@ func GenerateAndPersistGraphSuggestions(ctx context.Context, db *sql.DB, opts Fi
 }
 
 func PersistGraphMergeCandidates(ctx context.Context, db *sql.DB, candidates []MergeCandidate) error {
+	if err := DeletePendingGraphOnlyMergeSuggestions(ctx, db); err != nil {
+		return err
+	}
 	for _, candidate := range candidates {
 		if err := UpsertMergeSuggestion(ctx, db, MergeSuggestionInput{
 			PersonAID:      candidate.FromID,
@@ -99,6 +103,14 @@ func PersistGraphMergeCandidates(ctx context.Context, db *sql.DB, candidates []M
 		}
 	}
 	return nil
+}
+
+func DeletePendingGraphOnlyMergeSuggestions(ctx context.Context, db *sql.DB) error {
+	_, err := db.ExecContext(ctx, `
+		DELETE FROM memento_merge_suggestion
+		WHERE status = 'pending' AND sources = '["graph"]'
+	`)
+	return err
 }
 
 func UpsertMergeSuggestion(ctx context.Context, db *sql.DB, input MergeSuggestionInput) error {
@@ -190,6 +202,10 @@ func ListMergeSuggestions(ctx context.Context, db *sql.DB, opts ListMergeSuggest
 	if limit <= 0 {
 		limit = 50
 	}
+	offset := opts.Offset
+	if offset < 0 {
+		offset = 0
+	}
 	orderBy := mergeSuggestionOrderBy(opts.Sort)
 	rows, err := db.QueryContext(ctx, fmt.Sprintf(`
 		SELECT id, person_a_id, person_b_id, sources, name_similarity, token_overlap,
@@ -198,8 +214,8 @@ func ListMergeSuggestions(ctx context.Context, db *sql.DB, opts ListMergeSuggest
 		FROM memento_merge_suggestion
 		WHERE status = ?
 		ORDER BY %s
-		LIMIT ?
-	`, orderBy), status, limit)
+		LIMIT ? OFFSET ?
+	`, orderBy), status, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -213,6 +229,20 @@ func ListMergeSuggestions(ctx context.Context, db *sql.DB, opts ListMergeSuggest
 		out = append(out, row)
 	}
 	return out, rows.Err()
+}
+
+func CountMergeSuggestions(ctx context.Context, db *sql.DB, status string) (int, error) {
+	status = strings.TrimSpace(status)
+	if status == "" {
+		status = "pending"
+	}
+	var total int
+	err := db.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+		FROM memento_merge_suggestion
+		WHERE status = ?
+	`, status).Scan(&total)
+	return total, err
 }
 
 func MarkMergeSuggestionResolved(ctx context.Context, db *sql.DB, id int64, status string) (MergeSuggestionRow, error) {

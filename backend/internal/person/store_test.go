@@ -135,6 +135,58 @@ func TestPersistClusters_NewMemberJoinsExistingPerson(t *testing.T) {
 	}
 }
 
+func TestPersistClusters_PrimaryEmailUsesAllAliasesForReusedPerson(t *testing.T) {
+	db := newTestDB(t)
+	ctx := context.Background()
+
+	if _, err := db.Exec(`INSERT INTO memento_person (id, canonical_name, primary_email) VALUES (1, 'George Chiramattel', 'georgeck@live.com')`); err != nil {
+		t.Fatalf("seed person: %v", err)
+	}
+	for _, email := range []string{"georgeck@gmail.com", "georgeck@live.com"} {
+		if _, err := db.Exec(`
+			INSERT INTO memento_person_email (email_address, person_id, display_name, link_source, confidence, locked)
+			VALUES (?, 1, 'George Chiramattel', 'singleton', 1.0, 0)
+		`, email); err != nil {
+			t.Fatalf("seed email %s: %v", email, err)
+		}
+	}
+
+	gmailCluster := cluster{
+		ID: 1,
+		Members: []*clusterMember{{
+			Participant: msgvault.ParticipantForResolution{
+				ID:           1,
+				EmailAddress: "georgeck@gmail.com",
+				DisplayName:  "George Chiramattel",
+				MessageCount: 6698,
+			},
+		}},
+	}
+	liveCluster := cluster{
+		ID: 2,
+		Members: []*clusterMember{{
+			Participant: msgvault.ParticipantForResolution{
+				ID:           2,
+				EmailAddress: "georgeck@live.com",
+				DisplayName:  "George Chiramattel",
+				MessageCount: 1,
+			},
+		}},
+	}
+
+	if _, _, err := PersistClusters(ctx, db, []cluster{gmailCluster, liveCluster}); err != nil {
+		t.Fatalf("persist: %v", err)
+	}
+
+	var primary string
+	if err := db.QueryRow(`SELECT primary_email FROM memento_person WHERE id = 1`).Scan(&primary); err != nil {
+		t.Fatalf("load primary: %v", err)
+	}
+	if primary != "georgeck@gmail.com" {
+		t.Fatalf("primary_email = %q, want georgeck@gmail.com", primary)
+	}
+}
+
 func TestPersistClusters_LockedRowAnchorsPerson(t *testing.T) {
 	db := newTestDB(t)
 	ctx := context.Background()

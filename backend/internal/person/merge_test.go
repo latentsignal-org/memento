@@ -253,6 +253,30 @@ func TestFindMergeCandidates_NameMismatchWithStrongGraphSurfaced(t *testing.T) {
 	}
 }
 
+func TestFindMergeCandidates_NameMismatchContainmentRejected(t *testing.T) {
+	db := newMergeTestDB(t)
+	large := seedPerson(t, db, "Alice Wonderland", "alice@x.com")
+	small := seedPerson(t, db, "Bob Burger", "bob@x.com")
+	c1 := seedPerson(t, db, "Carol One", "c1@x.com")
+	c2 := seedPerson(t, db, "Carol Two", "c2@x.com")
+	c3 := seedPerson(t, db, "Carol Three", "c3@x.com")
+
+	seedEdge(t, db, large, c1, 100)
+	seedEdge(t, db, large, c2, 100)
+	seedEdge(t, db, large, c3, 100)
+	seedEdge(t, db, small, c1, 100)
+
+	cands, err := FindMergeCandidates(context.Background(), db, DefaultMergeOptions())
+	if err != nil {
+		t.Fatalf("FindMergeCandidates: %v", err)
+	}
+	for _, c := range cands {
+		if (c.FromID == large && c.IntoID == small) || (c.FromID == small && c.IntoID == large) {
+			t.Fatalf("name-mismatch containment pair should not be surfaced: %+v", c)
+		}
+	}
+}
+
 // TestMergePersons_HappyPath verifies emails, facets, narratives, notes,
 // and project memberships all transfer correctly.
 func TestMergePersons_HappyPath(t *testing.T) {

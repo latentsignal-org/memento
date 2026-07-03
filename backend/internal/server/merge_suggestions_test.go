@@ -95,3 +95,44 @@ func TestGetPeopleMergeSuggestionsSkipsStaleRows(t *testing.T) {
 		t.Fatalf("rejected suggestions = %+v, want one stale row", rejected)
 	}
 }
+
+func TestGetPeopleMergeSuggestionsReturnsPaginationMetadata(t *testing.T) {
+	srv := newMergeSuggestionsTestServer(t)
+	ctx := context.Background()
+	people := []int64{
+		seedMergeSuggestionPerson(t, srv.db, "Ann One", "ann1@example.com", false),
+		seedMergeSuggestionPerson(t, srv.db, "Ann Two", "ann2@example.com", false),
+		seedMergeSuggestionPerson(t, srv.db, "Ann Three", "ann3@example.com", false),
+		seedMergeSuggestionPerson(t, srv.db, "Ann Four", "ann4@example.com", false),
+	}
+	for i := 0; i < 3; i++ {
+		if err := person.UpsertMergeSuggestion(ctx, srv.db, person.MergeSuggestionInput{
+			PersonAID:      people[i],
+			PersonBID:      people[i+1],
+			Sources:        []string{person.LinkSourceJaroWinkler},
+			NameSimilarity: 0.95,
+			CombinedScore:  0.95,
+			ScoresStale:    true,
+		}); err != nil {
+			t.Fatalf("upsert suggestion %d: %v", i, err)
+		}
+	}
+
+	rec := httptest.NewRecorder()
+	srv.mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/people/merge-suggestions?limit=2&offset=1", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+	}
+	var response struct {
+		Suggestions []any `json:"suggestions"`
+		Total       int   `json:"total"`
+		Limit       int   `json:"limit"`
+		Offset      int   `json:"offset"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Total != 3 || response.Limit != 2 || response.Offset != 1 || len(response.Suggestions) != 2 {
+		t.Fatalf("response = %+v, want total 3, limit 2, offset 1, two suggestions", response)
+	}
+}

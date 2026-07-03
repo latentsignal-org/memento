@@ -468,15 +468,20 @@ type peopleMergeSuggestion struct {
 
 func (s *Server) handleGetPeopleMergeSuggestions(w http.ResponseWriter, r *http.Request) {
 	limit := parseIntQuery(r, "limit", 25)
+	offset := parseIntQuery(r, "offset", 0)
+	if offset < 0 {
+		offset = 0
+	}
 	sortKey := r.URL.Query().Get("sort")
 	status := r.URL.Query().Get("status")
 	suggestions, err := person.ListMergeSuggestions(r.Context(), s.db, person.ListMergeSuggestionOptions{
 		Status: status,
 		Sort:   sortKey,
 		Limit:  limit,
+		Offset: offset,
 	})
 	if isNotSetUp(err) {
-		writeJSON(w, http.StatusOK, map[string]any{"suggestions": []any{}})
+		writeJSON(w, http.StatusOK, map[string]any{"suggestions": []any{}, "total": 0, "limit": limit, "offset": offset})
 		return
 	}
 	if err != nil {
@@ -522,7 +527,12 @@ func (s *Server) handleGetPeopleMergeSuggestions(w http.ResponseWriter, r *http.
 			},
 		})
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"suggestions": out})
+	total, err := person.CountMergeSuggestions(r.Context(), s.db, status)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"suggestions": out, "total": total, "limit": limit, "offset": offset})
 }
 
 func (s *Server) loadPeopleMergeProfile(ctx context.Context, personID int64, fallbackName, fallbackEmail string, aliases []string, lockedCount int) (peopleMergeProfile, error) {

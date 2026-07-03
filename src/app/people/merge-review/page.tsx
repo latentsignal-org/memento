@@ -37,8 +37,13 @@ type MergeCandidate = {
 
 type SuggestionsResponse = {
     suggestions?: MergeCandidate[];
+    total?: number;
+    limit?: number;
+    offset?: number;
     error?: string;
 };
+
+const PAGE_SIZE = 50;
 
 const sortOptions: Array<{ value: SortKey; label: string }> = [
     {value: "combined", label: "Match score"},
@@ -190,25 +195,35 @@ export default function PeopleMergeReviewPage() {
     const [candidates, setCandidates] = useState<MergeCandidate[]>([]);
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
     const [sortBy, setSortBy] = useState<SortKey>("combined");
+    const [totalCount, setTotalCount] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [decidingId, setDecidingId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [notice, setNotice] = useState<string | null>(null);
 
-    const loadSuggestions = useCallback(async (sort: SortKey) => {
-        setIsLoading(true);
+    const loadSuggestions = useCallback(async (sort: SortKey, offset = 0) => {
+        const append = offset > 0;
+        if (append) setIsLoadingMore(true);
+        else setIsLoading(true);
         setError(null);
         try {
-            const res = await fetch(`/api/people/merge-suggestions?limit=50&sort=${sort}`, {cache: "no-store"});
+            const res = await fetch(`/api/people/merge-suggestions?limit=${PAGE_SIZE}&offset=${offset}&sort=${sort}`, {cache: "no-store"});
             const data = (await res.json()) as SuggestionsResponse;
             if (!res.ok) throw new Error(data.error || `load suggestions: ${res.status}`);
             const suggestions = data.suggestions || [];
-            setCandidates(suggestions);
-            setExpanded(new Set(suggestions.slice(0, 2).map((candidate) => candidate.id)));
+            setTotalCount(data.total ?? suggestions.length);
+            if (append) {
+                setCandidates((prev) => [...prev, ...suggestions]);
+            } else {
+                setCandidates(suggestions);
+                setExpanded(new Set(suggestions.slice(0, 2).map((candidate) => candidate.id)));
+            }
         } catch (err) {
             setError(err instanceof Error ? err.message : String(err));
         } finally {
-            setIsLoading(false);
+            if (append) setIsLoadingMore(false);
+            else setIsLoading(false);
         }
     }, []);
 
@@ -220,6 +235,7 @@ export default function PeopleMergeReviewPage() {
         () => candidates.reduce((sum, candidate) => sum + candidate.people.reduce((personSum, person) => personSum + person.message_count, 0), 0),
         [candidates],
     );
+    const hasMoreSuggestions = candidates.length < totalCount;
 
     const toggleExpanded = (id: string) => {
         setExpanded((prev) => {
@@ -243,6 +259,7 @@ export default function PeopleMergeReviewPage() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || `merge decision: ${res.status}`);
             setCandidates((prev) => prev.filter((item) => item.id !== candidate.id));
+            setTotalCount((prev) => Math.max(0, prev - 1));
             setExpanded((prev) => {
                 const next = new Set(prev);
                 next.delete(candidate.id);
@@ -282,12 +299,15 @@ export default function PeopleMergeReviewPage() {
                         <p className="text-[11px] font-bold uppercase tracking-[0.18em] opacity-75">Pending review</p>
                         <div className="mt-5 grid grid-cols-2 gap-4">
                             <div>
-                                <p className="text-headline-md font-headline-md">{candidates.length}</p>
+                                <p className="text-headline-md font-headline-md">{totalCount}</p>
                                 <p className="text-[11px] uppercase tracking-wide opacity-70">Suggestions</p>
+                                {totalCount > candidates.length && (
+                                    <p className="mt-1 text-[11px] opacity-70">{candidates.length} loaded</p>
+                                )}
                             </div>
                             <div>
                                 <p className="text-headline-md font-headline-md">{pendingMessageCount.toLocaleString()}</p>
-                                <p className="text-[11px] uppercase tracking-wide opacity-70">Messages</p>
+                                <p className="text-[11px] uppercase tracking-wide opacity-70">Loaded messages</p>
                             </div>
                         </div>
                     </div>
@@ -482,6 +502,17 @@ export default function PeopleMergeReviewPage() {
                             </article>
                         );
                     })}
+
+                    {!isLoading && hasMoreSuggestions && (
+                        <button
+                            onClick={() => void loadSuggestions(sortBy, candidates.length)}
+                            disabled={isLoadingMore}
+                            className="flex w-full items-center justify-center gap-2 rounded-lg border border-outline-variant bg-white px-4 py-3 text-ui-small font-bold text-on-surface-variant hover:bg-surface-container disabled:opacity-40"
+                        >
+                            <RefreshCw size={15} className={isLoadingMore ? "animate-spin" : ""}/>
+                            Load more suggestions
+                        </button>
+                    )}
                 </div>
             </section>
         </main>

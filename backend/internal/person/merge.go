@@ -384,7 +384,7 @@ func FindMergeCandidates(ctx context.Context, db *sql.DB, opts FindMergeOptions)
 		sigJaccard := weightedJaccard(sigA, sigB)
 		sigOverlap := weightedOverlap(sigA, sigB)
 		sigScore := sigJaccard
-		if sigOverlap > sigScore {
+		if nameScore > 0 && sigOverlap > sigScore {
 			sigScore = sigOverlap
 		}
 
@@ -401,7 +401,7 @@ func FindMergeCandidates(ctx context.Context, db *sql.DB, opts FindMergeOptions)
 				shared++
 			}
 		}
-		if shared < 1 {
+		if shared < 1 || (nameScore == 0 && shared < 2) {
 			continue
 		}
 
