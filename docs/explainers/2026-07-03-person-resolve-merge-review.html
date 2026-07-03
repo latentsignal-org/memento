@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Memento person resolution and merge review branch</title>
+  <style>
+    :root {
+      --bg: #f7f8f4;
+      --paper: #ffffff;
+      --ink: #1d2722;
+      --muted: #607067;
+      --line: #d8ded6;
+      --green: #1f6b4c;
+      --green-2: #dcebe3;
+      --gold: #8a6400;
+      --gold-2: #fff4cf;
+      --red: #9f2d2d;
+      --red-2: #f8dddd;
+      --blue: #315f7e;
+      --blue-2: #e2eef5;
+      --code: #102019;
+      --code-bg: #eef3ee;
+      --shadow: 0 18px 50px rgba(29, 39, 34, 0.10);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 16px/1.65 ui-serif, Georgia, Cambria, "Times New Roman", serif;
+    }
+    a { color: var(--green); text-decoration-thickness: 0.08em; text-underline-offset: 0.18em; }
+    .shell { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: 32px; max-width: 1320px; margin: 0 auto; padding: 28px; }
+    .toc {
+      position: sticky;
+      top: 20px;
+      align-self: start;
+      background: rgba(255,255,255,0.88);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .toc h2 { margin: 0 0 8px; font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+    .toc a { display: block; padding: 7px 0; color: var(--ink); text-decoration: none; font-size: 14px; }
+    .toc a:hover { color: var(--green); }
+    main { min-width: 0; }
+    .hero {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: clamp(28px, 5vw, 56px);
+      box-shadow: var(--shadow);
+    }
+    .eyebrow {
+      margin: 0 0 12px;
+      color: var(--green);
+      font: 700 13px/1.2 ui-sans-serif, system-ui, sans-serif;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+    h1, h2, h3 {
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.12;
+      letter-spacing: 0;
+    }
+    h1 { margin: 0; max-width: 900px; font-size: clamp(38px, 7vw, 74px); color: var(--green); }
+    h2 { margin: 68px 0 14px; font-size: clamp(28px, 4vw, 42px); color: var(--green); }
+    h3 { margin: 34px 0 10px; font-size: 22px; color: #284337; }
+    p { margin: 0 0 18px; }
+    .lead { margin-top: 22px; max-width: 860px; color: var(--muted); font-size: clamp(18px, 2vw, 22px); }
+    section {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: clamp(22px, 4vw, 44px);
+      margin-top: 28px;
+      box-shadow: 0 10px 32px rgba(29, 39, 34, 0.06);
+    }
+    .callout {
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--green);
+      background: #f7fbf8;
+      border-radius: 12px;
+      padding: 16px 18px;
+      margin: 22px 0;
+    }
+    .callout.warn { border-left-color: var(--gold); background: var(--gold-2); }
+    .callout.danger { border-left-color: var(--red); background: var(--red-2); }
+    .callout strong { font-family: ui-sans-serif, system-ui, sans-serif; }
+    .grid { display: grid; gap: 16px; }
+    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fbfcfa;
+      padding: 16px;
+    }
+    .card h4 {
+      margin: 0 0 8px;
+      color: var(--green);
+      font: 800 15px/1.3 ui-sans-serif, system-ui, sans-serif;
+    }
+    .card p, .card li { font-size: 15px; color: var(--muted); }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 4px 10px;
+      background: var(--green-2);
+      color: var(--green);
+      font: 800 12px/1 ui-sans-serif, system-ui, sans-serif;
+      margin: 2px 4px 2px 0;
+    }
+    .diagram {
+      margin: 24px 0;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: linear-gradient(180deg, #ffffff, #f6f8f5);
+      padding: 18px;
+      overflow-x: auto;
+    }
+    .flow { display: flex; align-items: stretch; gap: 12px; min-width: 720px; }
+    .node {
+      flex: 1;
+      min-width: 130px;
+      border: 1px solid var(--line);
+      background: white;
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 8px 20px rgba(29, 39, 34, 0.06);
+      font-family: ui-sans-serif, system-ui, sans-serif;
+    }
+    .node strong { display: block; color: var(--green); margin-bottom: 6px; }
+    .node small { display: block; color: var(--muted); line-height: 1.35; }
+    .arrow {
+      display: flex;
+      align-items: center;
+      color: var(--muted);
+      font: 800 24px/1 ui-sans-serif, system-ui, sans-serif;
+    }
+    .policy {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin: 22px 0;
+    }
+    .policy .yes { border-top: 5px solid var(--green); }
+    .policy .no { border-top: 5px solid var(--gold); }
+    .example-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: ui-sans-serif, system-ui, sans-serif;
+      font-size: 14px;
+      margin: 18px 0;
+      overflow: hidden;
+      border-radius: 12px;
+    }
+    .example-table th, .example-table td { border: 1px solid var(--line); padding: 10px 12px; text-align: left; vertical-align: top; }
+    .example-table th { background: #eff5ef; color: var(--green); }
+    .mini-ui {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      overflow: hidden;
+      background: #f9fbf8;
+      margin: 22px 0;
+      font-family: ui-sans-serif, system-ui, sans-serif;
+    }
+    .mini-ui .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; background: var(--green); color: white; }
+    .mini-ui .body { display: grid; grid-template-columns: 220px 1fr; gap: 14px; padding: 14px; }
+    .mini-ui .side, .mini-ui .candidate { border: 1px solid var(--line); border-radius: 12px; background: white; padding: 14px; }
+    .candidate-head { display: flex; justify-content: space-between; gap: 10px; align-items: start; }
+    .badge { border-radius: 999px; background: var(--blue-2); color: var(--blue); padding: 4px 8px; font-size: 12px; font-weight: 800; }
+    .people-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0; }
+    .person-box { border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: #fbfcfa; }
+    .buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+    .button { border-radius: 9px; padding: 9px 12px; font-weight: 800; font-size: 13px; border: 1px solid var(--line); background: white; }
+    .button.primary { background: var(--green); color: white; border-color: var(--green); }
+    pre {
+      white-space: pre-wrap;
+      overflow-x: auto;
+      background: var(--code-bg);
+      color: var(--code);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; background: var(--code-bg); padding: 0.1em 0.25em; border-radius: 4px; }
+    ul { padding-left: 1.25em; }
+    li { margin: 7px 0; }
+    .quiz-item {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      margin: 16px 0;
+      background: #fbfcfa;
+    }
+    .quiz-item h3 { margin-top: 0; font-size: 18px; }
+    .answers { display: grid; gap: 8px; margin-top: 12px; }
+    .answers button {
+      text-align: left;
+      border: 1px solid var(--line);
+      background: white;
+      border-radius: 10px;
+      padding: 10px 12px;
+      color: var(--ink);
+      cursor: pointer;
+      font: 14px/1.4 ui-sans-serif, system-ui, sans-serif;
+    }
+    .answers button:hover { border-color: var(--green); }
+    .answers button.correct { background: var(--green-2); border-color: var(--green); color: var(--green); }
+    .answers button.wrong { background: var(--red-2); border-color: var(--red); color: var(--red); }
+    .feedback {
+      display: none;
+      margin-top: 12px;
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: #eef3ee;
+      color: var(--muted);
+      font-family: ui-sans-serif, system-ui, sans-serif;
+      font-size: 14px;
+    }
+    .feedback.show { display: block; }
+    .footer-note { color: var(--muted); font-family: ui-sans-serif, system-ui, sans-serif; font-size: 14px; }
+    @media (max-width: 900px) {
+      .shell { display: block; padding: 14px; }
+      .toc { position: static; margin-bottom: 18px; }
+      .grid.two, .grid.three, .policy, .mini-ui .body, .people-pair { grid-template-columns: 1fr; }
+      .hero, section { border-radius: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <nav class="toc" aria-label="Table of contents">
+      <h2>Contents</h2>
+      <a href="#background">Background</a>
+      <a href="#intuition">Intuition</a>
+      <a href="#code">Code walkthrough</a>
+      <a href="#taking-effect">Taking effect</a>
+      <a href="#edge-cases">Edge cases</a>
+      <a href="#quiz">Quiz</a>
+    </nav>
+
+    <main>
+      <header class="hero">
+        <p class="eyebrow">Current branch explanation</p>
+        <h1>Person resolution becomes conservative, and duplicate people move into a review queue.</h1>
+        <p class="lead">This branch changes Memento's identity pipeline from "merge when the evidence seems good enough" to "merge only when mailbox rules prove equivalence, then ask a human about everything weaker." It adds a persisted suggestion queue, a UI for reviewing it, API endpoints for accepting or rejecting pairs, and a repair command for data created by older resolver behavior.</p>
+      </header>
+
+      <section id="background">
+        <h2>Background</h2>
+        <h3>The system in one paragraph</h3>
+        <p>Memento reads a local <code>msgvault</code> archive and writes derived product tables whose names begin with <code>memento_</code>. The People dimension starts with raw email participants, clusters email addresses into canonical people, classifies which people are meaningful contacts, builds rollups for the UI, and then lets agents enrich selected people with source-attributed notes and narrative sections.</p>
+
+        <div class="diagram" aria-label="People pipeline">
+          <div class="flow">
+            <div class="node"><strong>msgvault participants</strong><small>Raw senders and recipients such as <code>jane@gmail.com</code> and <code>j.smith@gmail.com</code>.</small></div>
+            <div class="arrow">→</div>
+            <div class="node"><strong>person resolver</strong><small>Creates canonical clusters and records why each email belongs there.</small></div>
+            <div class="arrow">→</div>
+            <div class="node"><strong>memento_person</strong><small>Stable person IDs plus email aliases in <code>memento_person_email</code>.</small></div>
+            <div class="arrow">→</div>
+            <div class="node"><strong>candidate and rollup</strong><small>Human, weak signal, excluded. Fast People index rows.</small></div>
+            <div class="arrow">→</div>
+            <div class="node"><strong>People UI</strong><small>Directory, profile pages, merge review, and later agent enrichment.</small></div>
+          </div>
+        </div>
+
+        <h3>Why identity resolution is dangerous</h3>
+        <p>Email identities are deceptively messy. One human can use many addresses. One display name can belong to many humans. Forwarders and product notifications often attach a person's name to an automated sender. A fuzzy spelling match can be right in a small address book and wrong in a large archive.</p>
+
+        <p>Before this branch, the resolver could automatically combine participants using non-mailbox evidence: exact display-name equality, forwarder-unwrapped names, and optionally fuzzy name similarity. That was convenient, but it created a data safety problem. A wrong automatic merge does not merely affect a label. It can mix timelines, notes, facets, project memberships, and generated relationship narratives.</p>
+
+        <div class="callout danger">
+          <strong>Important safety boundary:</strong> a false positive person merge is worse than a missed duplicate. A missed duplicate creates review work. A false positive corrupts the meaning of a person page and can contaminate later generated text.
+        </div>
+
+        <h3>The narrower background for this branch</h3>
+        <p>The branch is focused on the person package, the server routes behind <code>/api/people</code>, the onboarding and refresh runners, and the merge-review page. Here, "this branch" means <code>feature/03-person-resolve</code>, compared with its baseline on <code>origin/main</code>. Its durable product decision is recorded in <code>DECISIONS.md</code>: automatic identity links now require deterministic mailbox equivalence.</p>
+
+        <div class="policy">
+          <div class="card yes">
+            <h4>Allowed to auto-link</h4>
+            <p>Only evidence that proves two addresses deliver to the same mailbox under provider-specific rules.</p>
+            <span class="pill">case normalization</span>
+            <span class="pill">guarded plus-tags</span>
+            <span class="pill">Gmail dots</span>
+          </div>
+          <div class="card no">
+            <h4>Review only</h4>
+            <p>Evidence that suggests the same human, but cannot prove the same mailbox.</p>
+            <span class="pill">exact display name</span>
+            <span class="pill">forwarder unwrap</span>
+            <span class="pill">fuzzy spelling</span>
+            <span class="pill">name tokens</span>
+            <span class="pill">social graph</span>
+          </div>
+        </div>
+
+        <h3>Person vs People</h3>
+        <p>The codebase uses <code>person</code> and <code>people</code> for related but different layers.</p>
+        <div class="grid two">
+          <div class="card">
+            <h4><code>person</code>: identity primitive</h4>
+            <p>This is the backend identity model: canonical rows in <code>memento_person</code>, aliases in <code>memento_person_email</code>, and merge/split/resolve behavior in <code>backend/internal/person</code>.</p>
+          </div>
+          <div class="card">
+            <h4><code>people</code>: product surface</h4>
+            <p>This is the People dimension users see: candidate classification, UI rollups, directory rows, and People page reports in <code>backend/internal/people</code> and <code>memento_people_report</code>.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="intuition">
+        <h2>Intuition</h2>
+        <p>The central idea is to separate two questions that used to blur together:</p>
+        <div class="grid two">
+          <div class="card">
+            <h4>Question 1: Are these the same mailbox?</h4>
+            <p>This can be answered deterministically for a small set of provider rules. If yes, Memento may link automatically.</p>
+          </div>
+          <div class="card">
+            <h4>Question 2: Are these the same human?</h4>
+            <p>This often needs judgment. Memento can rank likely duplicates, but the user confirms the merge.</p>
+          </div>
+        </div>
+
+        <h3>Toy examples</h3>
+        <table class="example-table">
+          <thead>
+            <tr><th>Input</th><th>Old intuition</th><th>New behavior</th><th>Why</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>jane+home@gmail.com</code><br><code>jane@gmail.com</code></td>
+              <td>Merge</td>
+              <td>Merge automatically</td>
+              <td>Gmail plus-tags are mailbox-equivalent when the local part is safe to strip.</td>
+            </tr>
+            <tr>
+              <td><code>j.smith@gmail.com</code><br><code>jsmith@gmail.com</code></td>
+              <td>Merge</td>
+              <td>Merge automatically</td>
+              <td>Gmail and Googlemail ignore dots in the local part.</td>
+            </tr>
+            <tr>
+              <td><code>Jane Smith &lt;jane@one.example&gt;</code><br><code>Jane Smith &lt;jane@two.example&gt;</code></td>
+              <td>Often merge</td>
+              <td>Create two people and queue a suggestion</td>
+              <td>Same display name is useful evidence, but not proof.</td>
+            </tr>
+            <tr>
+              <td><code>Jane Smith (via Google Photos)</code><br><code>Jane Smith</code></td>
+              <td>Could merge through name normalization</td>
+              <td>Queue a suggestion</td>
+              <td>Forwarder markers are strong hints, but product senders can still mislead.</td>
+            </tr>
+            <tr>
+              <td><code>Alice Wonderland</code><br><code>Bob Burger</code>, same co-recipient graph</td>
+              <td>Graph candidate from CLI</td>
+              <td>Persist graph-backed review row</td>
+              <td>Shared contacts can reveal duplicates, but the user still owns the decision.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Review suggestion sources</h3>
+        <p>Accepted review-queue merges can originate from several evidence sources. In all of these cases, the new branch treats the source as review evidence, not automatic proof, unless the addresses also pass the deterministic mailbox-equivalence gate.</p>
+        <table class="example-table">
+          <thead>
+            <tr><th>Source</th><th>Example</th><th>Before this branch</th><th>In this branch</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Name match</strong></td>
+              <td><code>Jane Smith &lt;jane@personal.example&gt;</code><br><code>Jane Smith &lt;jane@work.example&gt;</code></td>
+              <td>Exact normalized display-name equality could automatically combine participants.</td>
+              <td>Both people remain separate, and a persisted suggestion is queued.</td>
+            </tr>
+            <tr>
+              <td><strong>Forwarder</strong></td>
+              <td><code>Jane Smith (via Google Photos)</code><br><code>Jane Smith</code></td>
+              <td>The parenthetical could be stripped, making the names equal enough to merge automatically.</td>
+              <td>The forwarder marker is evidence for review only.</td>
+            </tr>
+            <tr>
+              <td><strong>Fuzzy spelling</strong></td>
+              <td><code>Jon Smith</code><br><code>John Smith</code></td>
+              <td>With fuzzy behavior enabled, high spelling similarity could merge the records.</td>
+              <td>Jaro-Winkler similarity can create or rank a suggestion, but does not merge by itself.</td>
+            </tr>
+            <tr>
+              <td><strong>Token overlap</strong></td>
+              <td><code>Anne Marie Johnson</code><br><code>Anne Johnson</code></td>
+              <td>Shared display-name tokens were part of the fuzzy merge path.</td>
+              <td>Shared tokens are stored as <code>token_overlap</code> evidence and can be used for sorting.</td>
+            </tr>
+            <tr>
+              <td><strong>Graph signature</strong></td>
+              <td>Two records repeatedly appear with the same close co-recipients, even if their addresses differ.</td>
+              <td>Graph candidates were surfaced by the old merge-suggestion/review flow, but not as durable review-state rows.</td>
+              <td>Graph-backed candidates are upserted into <code>memento_merge_suggestion</code> with source <code>graph</code>.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>The new mental model</h3>
+        <div class="diagram" aria-label="Automatic versus review flow">
+          <div class="flow">
+            <div class="node"><strong>Raw evidence</strong><small>Name, email address, domain, message count, graph neighbors.</small></div>
+            <div class="arrow">→</div>
+            <div class="node"><strong>Deterministic gate</strong><small>Does provider email normalization produce the same mailbox key?</small></div>
+            <div class="arrow">→</div>
+            <div class="node"><strong>If yes</strong><small>Persist one canonical person cluster.</small></div>
+            <div class="arrow">→</div>
+            <div class="node"><strong>If no</strong><small>Persist separate people plus a review suggestion.</small></div>
+          </div>
+        </div>
+
+        <p>The review queue is not a temporary report. It is a product state machine. A pending row can become accepted or rejected. If rejected, rerunning the resolver should not bring it back. If accepted, the merge happens transactionally and any stale pending suggestions involving the absorbed person are also resolved.</p>
+      </section>
+
+      <section id="code">
+        <h2>Code Walkthrough</h2>
+
+        <h3>1. The resolver stops auto-merging on names</h3>
+        <p><code>backend/internal/person/matcher.go</code> is the heart of the behavior change. The old normalized-name pass, forwarder re-tagging pass, and optional fuzzy merge pass are removed as automatic cluster merges. The resolver now forms clusters by normalized email only, then calls <code>collectResolveSuggestions</code> to emit advisory duplicate signals.</p>
+
+        <pre>func Resolve(ctx context.Context, reader *msgvault.Reader, locked map[string]bool, opts ResolveOptions) (ResolveReport, []cluster, error) {
+    // Build cluster members, skipping locked emails.
+    // Pass 1: group by normalizeEmail(email).
+    // Multi-member groups are plus_tag links.
+
+    report.Suggestions = collectResolveSuggestions(members, clusters, opts)
+
+    // Materialize clusters. Singletons become singleton links.
+    return report, out, nil
+}</pre>
+
+        <p><code>ResolveOptions</code> also changes meaning. The old <code>IncludeFuzzy</code> switch disappears from the data model. Thresholds such as Jaro-Winkler and Jaccard still exist, but they only affect whether a suggestion is emitted.</p>
+
+        <div class="callout">
+          <strong>Key design move:</strong> the resolver still computes weak identity signals, but those signals no longer decide database identity on their own.
+        </div>
+
+        <h3>2. Email normalization becomes provider-specific</h3>
+        <p><code>backend/internal/person/normalize.go</code> defines the deterministic gate. It lowercases every address, strips plus-tags only for known plus-capable providers, strips dots only for Gmail and Googlemail, and refuses to strip plus-tags for system-looking local parts.</p>
+
+        <pre>var providerEmailNormalization = map[string]emailNormalizationRules{
+    "gmail.com":      {stripPlusTag: true, stripDots: true},
+    "googlemail.com": {stripPlusTag: true, stripDots: true},
+    "hey.com":        {stripPlusTag: true},
+    "fastmail.com":   {stripPlusTag: true},
+    "pm.me":          {stripPlusTag: true},
+    "proton.me":      {stripPlusTag: true},
+    "protonmail.com": {stripPlusTag: true},
+}</pre>
+
+        <p>The tests make the policy concrete: Gmail dot variants merge; Fastmail dot variants do not. Same-name cross-domain people do not merge, but do create a suggestion.</p>
+
+        <h3>3. Suggestions become durable rows</h3>
+        <p>The new migration creates <code>memento_merge_suggestion</code>. Each row stores an ordered pair of people, evidence sources, scores, stale-score state, and a review status.</p>
+
+        <pre>CREATE TABLE IF NOT EXISTS memento_merge_suggestion (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  person_a_id INTEGER NOT NULL,
+  person_b_id INTEGER NOT NULL,
+  sources TEXT NOT NULL DEFAULT '[]',
+  name_similarity REAL NOT NULL DEFAULT 0,
+  token_overlap REAL NOT NULL DEFAULT 0,
+  signature_score REAL NOT NULL DEFAULT 0,
+  combined_score REAL NOT NULL DEFAULT 0,
+  scores_stale INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'pending',
+  resolved_at DATETIME,
+  CHECK(person_a_id &lt; person_b_id),
+  CHECK(status IN ('pending', 'accepted', 'rejected')),
+  UNIQUE(person_a_id, person_b_id)
+);</pre>
+
+        <p>This is the persisted review-queue model: the review queue lives in the database, not only in a page render or one command output. A row can be <code>pending</code>, <code>accepted</code>, or <code>rejected</code>. The table has two important invariants. First, the pair is ordered, so <code>(12, 91)</code> and <code>(91, 12)</code> cannot become separate suggestions. Second, only pending rows are updated on reruns. Accepted and rejected decisions are historical product state, not cache entries.</p>
+
+        <h3>4. Persistence returns a cluster-to-person map</h3>
+        <p><code>PersistClustersWithMapping</code> extends the existing stable-ID persistence contract. It still reuses existing person IDs when possible, prefers locked mappings, sweeps stale unlocked emails, and deletes orphaned people. It now also returns a map from run-local cluster IDs to persisted person IDs. That map lets resolver suggestions, which are emitted in terms of temporary cluster IDs, become durable person-pair rows.</p>
+
+        <div class="diagram" aria-label="Persisting suggestions after clusters">
+          <div class="flow">
+            <div class="node"><strong>Resolver output</strong><small>Cluster 7 and Cluster 12 look similar by name.</small></div>
+            <div class="arrow">→</div>
+            <div class="node"><strong>Persist clusters</strong><small>Cluster 7 maps to person #3100. Cluster 12 maps to person #3656.</small></div>
+            <div class="arrow">→</div>
+            <div class="node"><strong>Persist suggestion</strong><small>Store ordered pair <code>(3100, 3656)</code> in <code>memento_merge_suggestion</code>.</small></div>
+          </div>
+        </div>
+
+        <h3>5. Graph suggestions join the same queue</h3>
+        <p><code>backend/internal/person/merge.go</code> already had social-graph candidate scoring. This branch routes those candidates into the persisted queue with source <code>graph</code>. The refresh and onboarding flows now call <code>GenerateAndPersistGraphSuggestions</code> after building the social graph.</p>
+
+        <p>Before this branch, graph-backed duplicate candidates could be computed and shown, including in the older staged merge-review workflow. The new part is not the existence of graph evidence. The new part is that graph evidence feeds the same durable queue as name, forwarder, fuzzy, and token evidence.</p>
+
+        <p>This is why the UI can sort by four schemes:</p>
+        <ul>
+          <li><strong>Best match:</strong> combined score.</li>
+          <li><strong>Similar spelling:</strong> name similarity.</li>
+          <li><strong>Shared name words:</strong> token overlap.</li>
+          <li><strong>Mutual contacts:</strong> graph signature score.</li>
+        </ul>
+
+        <h3>6. The server exposes a review API</h3>
+        <p><code>backend/internal/server/routes.go</code> registers two new public endpoints:</p>
+        <pre>GET  /api/people/merge-suggestions?limit=50&amp;sort=combined
+POST /api/people/merge-decision
+
+// request body
+{"id":"123","decision":"accept"}
+{"id":"123","decision":"reject"}</pre>
+
+        <p>The GET route loads pending suggestions, then loads a compact profile for each person. If a row points at a dismissed or missing person, the route marks it rejected and skips it, avoiding ghost rows in the review queue. The POST route either marks a row rejected or accepts it by choosing a keep/merge direction and calling <code>MergePersons</code>.</p>
+
+        <h3>7. Accepting a suggestion is transactional</h3>
+        <p><code>MergePersons</code> transfers the absorbed person's data into the surviving person in one transaction: email aliases, facets, narratives, notes, and project memberships. It marks transferred emails as locked <code>signature_merge</code>, because a user confirmed the identity. It then accepts the pair's pending suggestion and rejects other pending rows involving the absorbed person.</p>
+
+        <div class="callout warn">
+          <strong>Terminology caveat:</strong> <code>signature_merge</code> is a legacy-ish name. In this branch, an accepted review merge is still a manual user decision, even if the original suggestion came from name match, forwarder evidence, fuzzy spelling, token overlap, or graph signature. The value effectively means "confirmed via the duplicate-review system and protected from future resolver changes." A clearer future name would be <code>review_merge</code> or <code>manual_merge</code>.
+        </div>
+
+        <pre>// During MergePersons:
+// 1. Move emails to the survivor.
+// 2. Mark moved emails locked with link_source = signature_merge.
+// 3. Move facets, narratives, notes, and project memberships.
+// 4. Mark the accepted suggestion accepted.
+// 5. Reject stale suggestions involving the absorbed person.
+// 6. Delete the absorbed person.</pre>
+
+        <h3>8. The UI becomes a real review surface</h3>
+        <p><code>src/app/people/merge-review/page.tsx</code> no longer computes a one-off candidate list. It fetches persisted suggestions, displays the evidence, recommends a keep direction, and lets the user accept or reject each pair individually.</p>
+
+        <p>The route path is unchanged: <code>/people/merge-review/</code> still exists. What changes is the implementation behind the route. The older UI had staged selections, a "Stage selected" action, and a batch "Commit staged" action. This branch replaces that under the same URL with a persisted-queue UI backed by <code>GET /api/people/merge-suggestions</code> and <code>POST /api/people/merge-decision</code>.</p>
+
+        <div class="mini-ui" aria-label="Simplified merge review UI">
+          <div class="bar">
+            <strong>Merge People</strong>
+            <span>Pending review: 12 suggestions</span>
+          </div>
+          <div class="body">
+            <div class="side">
+              <strong>Sort review queue</strong>
+              <p>Best match<br>Similar spelling<br>Shared name words<br>Mutual contacts</p>
+              <p><strong>Review policy</strong><br>Accept merges immediately. Not the same person will not return on reruns.</p>
+            </div>
+            <div class="candidate">
+              <div class="candidate-head">
+                <div>
+                  <span class="badge">92% best match</span>
+                  <h3>Jane Smith + Jane Q. Smith</h3>
+                  <p>Keep <strong>Jane Smith</strong>; merge <strong>Jane Q. Smith</strong>.</p>
+                </div>
+              </div>
+              <div class="people-pair">
+                <div class="person-box"><strong>Jane Smith</strong><br><small>jane@gmail.com<br>1,204 messages</small></div>
+                <div class="person-box"><strong>Jane Q. Smith</strong><br><small>jane@work.example<br>81 messages</small></div>
+              </div>
+              <div class="buttons">
+                <span class="button primary">Accept merge</span>
+                <span class="button">Not the same person</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p>The People directory now also fetches a pending suggestion count and shows it as a badge on the "Merge People" link. The setup wizard fetches the count after initialization and, if there are candidates, points the user directly to review.</p>
+
+        <h3>9. Legacy over-merges get an explicit repair command</h3>
+        <p><code>backend/internal/person/repair.go</code> adds <code>person-repair-nondeterministic</code>. It scans existing <code>memento_person_email</code> rows and looks for unlocked links whose source was one of the old unsafe resolver signals: <code>exact_name</code>, <code>forwarder_unwrap</code>, <code>jaro_winkler</code>, or <code>jaccard</code>.</p>
+
+        <p>The command plans splits by normalized email group. For each person, it keeps the safest group: the one containing the primary email if present, otherwise a locked/manual/signature anchor, otherwise the largest and oldest deterministic group. Unsafe non-equivalent groups are split into new locked/manual people when <code>--apply</code> is used.</p>
+
+        <pre>./memento person-repair-nondeterministic --dry-run
+./memento person-repair-nondeterministic --apply</pre>
+
+        <p>This is intentionally not automatic. Repairing historical identity data is a data migration with user-visible consequences, so the branch makes it an operator action with dry-run output.</p>
+
+        <h3>10. Documentation and decision log are updated</h3>
+        <p>The README, deterministic extraction guide, current-state spec, and <code>DECISIONS.md</code> now describe the conservative identity policy, the merge review queue, the new API endpoints, the updated CLI commands, and the repair workflow.</p>
+      </section>
+
+      <section id="taking-effect">
+        <h2>How The Changes Take Effect</h2>
+        <p>Building and running this branch changes the application code, but it does not automatically rewrite your existing local Memento tables just because you open the People page.</p>
+
+        <div class="grid two">
+          <div class="card">
+            <h4>What changes immediately after build</h4>
+            <p>The route <code>/people/merge-review/</code> serves the new page implementation. It asks the backend for persisted suggestions instead of showing the old staged batch workflow.</p>
+          </div>
+          <div class="card">
+            <h4>What does not happen automatically</h4>
+            <p>Already resolved people are not split or removed by page load. Existing bad historical merges remain until you explicitly run the repair flow.</p>
+          </div>
+        </div>
+
+        <p>The command <code>./memento person-resolve --persist</code> is not new. What changes in this branch is its behavior: automatic persistence is now limited to deterministic mailbox-equivalent clusters, and weaker duplicate evidence is persisted as review suggestions.</p>
+
+        <p>To populate the new queue after switching to this branch, the typical sequence is:</p>
+
+        <pre>./memento migrate
+./memento person-resolve --persist
+./memento refresh --people</pre>
+
+        <p>If you want graph-backed suggestions, the social graph also needs to be current. The setup and people refresh flows in this branch call graph suggestion persistence after building the graph.</p>
+
+        <p>For old over-merges created by previous resolver behavior, use dry-run first:</p>
+
+        <pre>./memento person-repair-nondeterministic --dry-run
+./memento person-repair-nondeterministic --apply</pre>
+
+        <div class="callout">
+          <strong>Practical consequence:</strong> if your current old merge-review page shows many live-computed suggestions, those exact rows are not guaranteed to appear after only building this branch. The new page reads <code>memento_merge_suggestion</code>. Until that table is migrated and populated, the new page may show fewer suggestions or none.
+        </div>
+      </section>
+
+      <section id="edge-cases">
+        <h2>Edge Cases</h2>
+        <div class="grid two">
+          <div class="card">
+            <h4>Rejected pairs do not resurface</h4>
+            <p><code>UpsertMergeSuggestion</code> inserts or updates pending rows, but if the existing row is accepted or rejected, it leaves it alone.</p>
+          </div>
+          <div class="card">
+            <h4>Missing people do not block the UI</h4>
+            <p>The suggestion GET route marks stale rows rejected if either side no longer has an active person profile.</p>
+          </div>
+          <div class="card">
+            <h4>Graph scores can arrive later</h4>
+            <p>Name-based resolver suggestions may have <code>scores_stale</code>. Later graph evidence can update the same pending row and clear that flag.</p>
+          </div>
+          <div class="card">
+            <h4>Manual decisions survive resolver reruns</h4>
+            <p>Locked email mappings are skipped by the resolver, and user-confirmed merge emails are locked as <code>signature_merge</code>.</p>
+          </div>
+          <div class="card">
+            <h4>Repair preserves anchors</h4>
+            <p>Legacy repair does not split locked, manual, signature-merge, or deterministic normalized-email groups.</p>
+          </div>
+          <div class="card">
+            <h4>The old fuzzy flag becomes harmless</h4>
+            <p><code>person-resolve --fuzzy</code> is now a deprecated no-op for automatic linking. Threshold flags only tune advisory suggestions.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="quiz">
+        <h2>Quiz</h2>
+        <p>Choose one answer for each question. The feedback appears immediately.</p>
+
+        <div class="quiz-item" data-answer="b">
+          <h3>1. Which evidence can now create an automatic person link?</h3>
+          <div class="answers">
+            <button data-choice="a">An exact display-name match across different domains.</button>
+            <button data-choice="b">Provider-specific normalized email equivalence, such as a safe Gmail plus-tag match.</button>
+            <button data-choice="c">A high Jaro-Winkler score between display names.</button>
+            <button data-choice="d">A strong social-graph signature score.</button>
+          </div>
+          <div class="feedback" data-ok="Correct. Automatic linking is limited to deterministic mailbox equivalence." data-bad="Not quite. The weaker identity signals now produce review suggestions, not automatic links."></div>
+        </div>
+
+        <div class="quiz-item" data-answer="c">
+          <h3>2. Why does <code>PersistClustersWithMapping</code> return a cluster-to-person map?</h3>
+          <div class="answers">
+            <button data-choice="a">To replace stable person IDs with fresh IDs on every resolver run.</button>
+            <button data-choice="b">To let the frontend render clusters without calling the API.</button>
+            <button data-choice="c">To translate run-local suggestion cluster IDs into durable person-pair rows.</button>
+            <button data-choice="d">To store graph signatures in <code>memento_person_email</code>.</button>
+          </div>
+          <div class="feedback" data-ok="Correct. Suggestions are emitted against temporary cluster IDs, so persistence needs the resulting person IDs." data-bad="Not quite. The mapping exists because resolver clusters are temporary, while review suggestions must reference persisted people."></div>
+        </div>
+
+        <div class="quiz-item" data-answer="d">
+          <h3>3. What happens when a user rejects a pending suggestion?</h3>
+          <div class="answers">
+            <button data-choice="a">The row is deleted, so the next resolver run can insert it again.</button>
+            <button data-choice="b">The two people are merged but marked low confidence.</button>
+            <button data-choice="c">Only the frontend hides the suggestion locally.</button>
+            <button data-choice="d">The row status becomes rejected, and later upserts leave it untouched.</button>
+          </div>
+          <div class="feedback" data-ok="Correct. Rejection is durable product state, not a transient dismissal." data-bad="Not quite. Rejections are persisted specifically so the same pair does not return after reruns."></div>
+        </div>
+
+        <div class="quiz-item" data-answer="a">
+          <h3>4. When accepting a merge, why are transferred emails marked <code>signature_merge</code> and locked?</h3>
+          <div class="answers">
+            <button data-choice="a">Because a user-confirmed merge should survive future resolver runs.</button>
+            <button data-choice="b">Because graph signatures are always deterministic mailbox evidence.</button>
+            <button data-choice="c">Because locked rows are deleted during refresh.</button>
+            <button data-choice="d">Because the UI cannot display unlocked aliases.</button>
+          </div>
+          <div class="feedback" data-ok="Correct. The lock records that the merge was a manual decision and protects it from automatic reconciliation." data-bad="Not quite. The lock is about preserving a user decision across resolver reruns."></div>
+        </div>
+
+        <div class="quiz-item" data-answer="b">
+          <h3>5. What does <code>person-repair-nondeterministic --apply</code> target?</h3>
+          <div class="answers">
+            <button data-choice="a">All people with more than one email alias.</button>
+            <button data-choice="b">Unlocked legacy links created from unsafe resolver sources such as exact name or fuzzy matching.</button>
+            <button data-choice="c">Every graph-backed merge that was previously accepted by the user.</button>
+            <button data-choice="d">Only singleton rows whose email address disappeared from msgvault.</button>
+          </div>
+          <div class="feedback" data-ok="Correct. The repair command is scoped to old non-deterministic automatic links and preserves safe anchors." data-bad="Not quite. The repair command is deliberately narrow and avoids locked/manual/signature or deterministic groups."></div>
+        </div>
+      </section>
+
+      <p class="footer-note">Generated for branch <code>feature/03-person-resolve</code>, comparing against <code>origin/main</code>. File date uses 2026-07-03.</p>
+    </main>
+  </div>
+
+  <script>
+    document.querySelectorAll(".quiz-item").forEach((item) => {
+      const answer = item.getAttribute("data-answer");
+      const feedback = item.querySelector(".feedback");
+      item.querySelectorAll("button[data-choice]").forEach((button) => {
+        button.addEventListener("click", () => {
+          item.querySelectorAll("button[data-choice]").forEach((other) => {
+            other.classList.remove("correct", "wrong");
+          });
+          const choice = button.getAttribute("data-choice");
+          const correct = choice === answer;
+          button.classList.add(correct ? "correct" : "wrong");
+          feedback.textContent = correct ? feedback.getAttribute("data-ok") : feedback.getAttribute("data-bad");
+          feedback.classList.add("show");
+        });
+      });
+    });
+  </script>
+</body>
+</html>
