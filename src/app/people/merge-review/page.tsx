@@ -73,6 +73,10 @@ function formatPercent(score?: number) {
     return `${Math.round((score ?? 0) * 100)}%`;
 }
 
+function hasGraphSignal(candidate: MergeCandidate) {
+    return candidate.sources?.includes("graph") || candidate.evidence.signature_score > 0;
+}
+
 function sourceLabel(source: string) {
     switch (source) {
         case "graph":
@@ -95,10 +99,8 @@ function evidenceChips(candidate: MergeCandidate) {
     if (candidate.sources?.includes("graph")) {
         chips.push({
             label: "Mutual contacts",
-            value: candidate.scores_pending ? "pending" : formatPercent(candidate.evidence.signature_score),
-            title: candidate.scores_pending
-                ? "Mutual contacts: pending first refresh"
-                : `Mutual contacts score: ${candidate.evidence.signature_score.toFixed(3)}`,
+            value: formatPercent(candidate.evidence.signature_score),
+            title: `Mutual contacts score: ${candidate.evidence.signature_score.toFixed(3)}`,
         });
     }
     if (candidate.sources?.includes("jaro_winkler") || candidate.evidence.name_similarity > 0) {
@@ -296,6 +298,7 @@ export default function PeopleMergeReviewPage() {
                         const keepPerson = candidate.people.find((person) => person.id === candidate.recommended_keep_id) ?? candidate.people[0];
                         const mergePerson = candidate.people.find((person) => person.id === candidate.recommended_merge_id) ?? candidate.people[1] ?? candidate.people[0];
                         const chips = evidenceChips(candidate);
+                        const graphSignal = hasGraphSignal(candidate);
 
                         return (
                             <article key={candidate.id} className="overflow-hidden rounded-2xl border border-outline-variant/50 bg-surface-container-low shadow-sm">
@@ -305,11 +308,11 @@ export default function PeopleMergeReviewPage() {
                                             <div className="min-w-0">
                                                 <div className="flex flex-wrap items-center gap-2">
                                                     <span className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${scoreTone(candidate.confidence)}`}>
-                                                        {candidate.scores_pending ? "Best match pending" : `${candidate.confidence}% best match`}
+                                                        {graphSignal ? `${candidate.confidence}% best match` : "Name-only suggestion"}
                                                     </span>
-                                                    {candidate.scores_pending && (
+                                                    {!graphSignal && (
                                                         <span className="rounded-full bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">
-                                                            Mutual contacts pending first refresh
+                                                            No mutual-contact match
                                                         </span>
                                                     )}
                                                 </div>
@@ -381,16 +384,16 @@ export default function PeopleMergeReviewPage() {
 
                                         {isExpanded && (
                                             <div className="mt-5 grid grid-cols-1 gap-4 rounded-2xl border border-outline-variant/40 bg-white p-4 md:grid-cols-4">
-                                                <div title={`Combined score: ${candidate.evidence.combined_score.toFixed(3)}`}>
+                                                <div title={graphSignal ? `Combined score: ${candidate.evidence.combined_score.toFixed(3)}` : "Name-only suggestion without a graph-backed score"}>
                                                     <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Best match</p>
                                                     <p className="mt-1 text-headline-sm font-headline-md text-primary">
-                                                        {candidate.scores_pending ? "pending" : formatPercent(candidate.evidence.combined_score)}
+                                                        {graphSignal ? formatPercent(candidate.evidence.combined_score) : "name-only"}
                                                     </p>
                                                 </div>
-                                                <div title={`Mutual contacts score: ${candidate.evidence.signature_score.toFixed(3)}`}>
+                                                <div title={graphSignal ? `Mutual contacts score: ${candidate.evidence.signature_score.toFixed(3)}` : "No graph-backed mutual-contact match"}>
                                                     <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Mutual contacts</p>
                                                     <p className="mt-1 text-headline-sm font-headline-md text-primary">
-                                                        {candidate.scores_pending ? "pending" : formatPercent(candidate.evidence.signature_score)}
+                                                        {graphSignal ? formatPercent(candidate.evidence.signature_score) : "no match"}
                                                     </p>
                                                 </div>
                                                 <div title={`Similar spelling score: ${candidate.evidence.name_similarity.toFixed(3)}`}>
