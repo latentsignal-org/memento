@@ -148,7 +148,7 @@ function evidenceRows(candidate: MergeCandidate) {
     } else {
         rows.push({
             label: "Mutual contacts",
-            value: "no support",
+            value: "none found",
             title: "No supporting social-graph signal for this suggestion",
         });
     }
