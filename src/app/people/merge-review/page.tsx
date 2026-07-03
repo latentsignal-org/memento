@@ -41,7 +41,7 @@ type SuggestionsResponse = {
 };
 
 const sortOptions: Array<{ value: SortKey; label: string }> = [
-    {value: "combined", label: "Best match"},
+    {value: "combined", label: "Match score"},
     {value: "name_similarity", label: "Similar spelling"},
     {value: "token_overlap", label: "Shared name words"},
     {value: "signature", label: "Mutual contacts"},
@@ -77,6 +77,10 @@ function hasGraphSignal(candidate: MergeCandidate) {
     return candidate.sources?.includes("graph") || candidate.evidence.signature_score > 0;
 }
 
+function hasSource(candidate: MergeCandidate, source: string) {
+    return candidate.sources?.includes(source) ?? false;
+}
+
 function sourceLabel(source: string) {
     switch (source) {
         case "graph":
@@ -94,35 +98,96 @@ function sourceLabel(source: string) {
     }
 }
 
-function evidenceChips(candidate: MergeCandidate) {
-    const chips: Array<{ label: string; value: string; title: string }> = [];
-    if (candidate.sources?.includes("graph")) {
-        chips.push({
+function strongestEvidenceLabel(candidate: MergeCandidate) {
+    const signals = [
+        {label: "mutual contacts", score: hasGraphSignal(candidate) ? candidate.evidence.signature_score : 0},
+        {label: "similar spelling", score: candidate.evidence.name_similarity},
+        {label: "shared name words", score: candidate.evidence.token_overlap ?? 0},
+    ].filter((signal) => signal.score > 0);
+
+    if (signals.length === 0) {
+        if (hasSource(candidate, "exact_name")) return "same display name";
+        if (hasSource(candidate, "forwarder_unwrap")) return "forwarded display-name cleanup";
+        return "available name evidence";
+    }
+
+    signals.sort((a, b) => b.score - a.score);
+    const strongest = signals[0];
+    const tied = signals.filter((signal) => Math.abs(signal.score - strongest.score) < 0.01);
+    if (tied.length > 1) {
+        return tied.map((signal) => signal.label).join(" and ");
+    }
+    return strongest.label;
+}
+
+function suggestionReason(candidate: MergeCandidate) {
+    if (hasSource(candidate, "exact_name")) {
+        return "Reason: same display name appears across separate profiles.";
+    }
+    if (hasSource(candidate, "forwarder_unwrap")) {
+        return "Reason: forwarded display-name cleanup points to the same name.";
+    }
+    const strongest = strongestEvidenceLabel(candidate);
+    if (hasGraphSignal(candidate)) {
+        return `Reason: ${strongest} is the strongest signal, with supporting social-graph evidence.`;
+    }
+    return `Reason: ${strongest} is the strongest name signal.`;
+}
+
+function evidenceRows(candidate: MergeCandidate) {
+    const rows: Array<{ label: string; value: string; title: string }> = [];
+    const graphSignal = hasGraphSignal(candidate);
+
+    if (graphSignal) {
+        rows.push({
+            label: "Match score",
+            value: formatPercent(candidate.evidence.combined_score),
+            title: `Combined score: ${candidate.evidence.combined_score.toFixed(3)}`,
+        });
+        rows.push({
             label: "Mutual contacts",
             value: formatPercent(candidate.evidence.signature_score),
             title: `Mutual contacts score: ${candidate.evidence.signature_score.toFixed(3)}`,
         });
-    }
-    if (candidate.sources?.includes("jaro_winkler") || candidate.evidence.name_similarity > 0) {
-        chips.push({
-            label: "Similar spelling",
-            value: formatPercent(candidate.evidence.name_similarity),
-            title: `Similar spelling score: ${candidate.evidence.name_similarity.toFixed(3)}`,
+    } else {
+        rows.push({
+            label: "Mutual contacts",
+            value: "no support",
+            title: "No supporting social-graph signal for this suggestion",
         });
     }
-    if (candidate.sources?.includes("jaccard") || (candidate.evidence.token_overlap ?? 0) > 0) {
-        const tokenOverlap = candidate.evidence.token_overlap ?? 0;
-        chips.push({
-            label: "Shared name words",
-            value: formatPercent(tokenOverlap),
-            title: `Shared name words score: ${tokenOverlap.toFixed(3)}`,
+
+    rows.push({
+        label: "Similar spelling",
+        value: formatPercent(candidate.evidence.name_similarity),
+        title: `Similar spelling score: ${candidate.evidence.name_similarity.toFixed(3)}`,
+    });
+    rows.push({
+        label: "Shared name words",
+        value: formatPercent(candidate.evidence.token_overlap),
+        title: `Shared name words score: ${(candidate.evidence.token_overlap ?? 0).toFixed(3)}`,
+    });
+
+    if ((candidate.evidence.shared_neighbor_count ?? 0) > 0) {
+        rows.push({
+            label: "Shared neighbors",
+            value: String(candidate.evidence.shared_neighbor_count),
+            title: `${candidate.evidence.shared_neighbor_count} shared graph neighbors`,
         });
     }
+    if ((candidate.evidence.temporal_score ?? 0) > 0) {
+        rows.push({
+            label: "Temporal overlap",
+            value: formatPercent(candidate.evidence.temporal_score),
+            title: `Temporal overlap score: ${(candidate.evidence.temporal_score ?? 0).toFixed(3)}`,
+        });
+    }
+
     for (const source of candidate.sources || []) {
         if (["graph", "jaro_winkler", "jaccard"].includes(source)) continue;
-        chips.push({label: sourceLabel(source), value: "", title: sourceLabel(source)});
+        rows.push({label: sourceLabel(source), value: "present", title: sourceLabel(source)});
     }
-    return chips;
+    return rows;
 }
 
 export default function PeopleMergeReviewPage() {
@@ -297,8 +362,8 @@ export default function PeopleMergeReviewPage() {
                         const isExpanded = expanded.has(candidate.id);
                         const keepPerson = candidate.people.find((person) => person.id === candidate.recommended_keep_id) ?? candidate.people[0];
                         const mergePerson = candidate.people.find((person) => person.id === candidate.recommended_merge_id) ?? candidate.people[1] ?? candidate.people[0];
-                        const chips = evidenceChips(candidate);
                         const graphSignal = hasGraphSignal(candidate);
+                        const rows = evidenceRows(candidate);
 
                         return (
                             <article key={candidate.id} className="overflow-hidden rounded-2xl border border-outline-variant/50 bg-surface-container-low shadow-sm">
@@ -307,12 +372,12 @@ export default function PeopleMergeReviewPage() {
                                         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                                             <div className="min-w-0">
                                                 <div className="flex flex-wrap items-center gap-2">
-                                                    <span className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${scoreTone(candidate.confidence)}`}>
-                                                        {graphSignal ? `${candidate.confidence}% best match` : "Name-only suggestion"}
+                                                    <span className="rounded-full bg-primary px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-primary-foreground">
+                                                        {graphSignal ? "Social-graph signal" : "Name signal only"}
                                                     </span>
-                                                    {!graphSignal && (
-                                                        <span className="rounded-full bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">
-                                                            No mutual-contact match
+                                                    {graphSignal && (
+                                                        <span className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${scoreTone(candidate.confidence)}`}>
+                                                            Match score {candidate.confidence}%
                                                         </span>
                                                     )}
                                                 </div>
@@ -322,20 +387,10 @@ export default function PeopleMergeReviewPage() {
                                                 <p className="mt-1 text-ui-small text-on-surface-variant">
                                                     Keep <strong>{keepPerson.name}</strong>; merge <strong>{mergePerson.name}</strong>.
                                                 </p>
+                                                <p className="mt-2 text-ui-small text-on-surface-variant">
+                                                    {suggestionReason(candidate)}
+                                                </p>
                                             </div>
-                                        </div>
-
-                                        <div className="mt-4 flex flex-wrap gap-2">
-                                            {chips.map((chip) => (
-                                                <span
-                                                    key={`${candidate.id}-${chip.label}`}
-                                                    title={chip.title}
-                                                    className="inline-flex items-center gap-1.5 rounded-full border border-outline-variant bg-white px-3 py-1 text-[11px] font-bold text-on-surface-variant"
-                                                >
-                                                    {chip.label}
-                                                    {chip.value && <span className="font-mono text-primary">{chip.value}</span>}
-                                                </span>
-                                            ))}
                                         </div>
 
                                         <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -384,26 +439,12 @@ export default function PeopleMergeReviewPage() {
 
                                         {isExpanded && (
                                             <div className="mt-5 grid grid-cols-1 gap-4 rounded-2xl border border-outline-variant/40 bg-white p-4 md:grid-cols-4">
-                                                <div title={graphSignal ? `Combined score: ${candidate.evidence.combined_score.toFixed(3)}` : "Name-only suggestion without a graph-backed score"}>
-                                                    <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Best match</p>
-                                                    <p className="mt-1 text-headline-sm font-headline-md text-primary">
-                                                        {graphSignal ? formatPercent(candidate.evidence.combined_score) : "name-only"}
-                                                    </p>
-                                                </div>
-                                                <div title={graphSignal ? `Mutual contacts score: ${candidate.evidence.signature_score.toFixed(3)}` : "No graph-backed mutual-contact match"}>
-                                                    <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Mutual contacts</p>
-                                                    <p className="mt-1 text-headline-sm font-headline-md text-primary">
-                                                        {graphSignal ? formatPercent(candidate.evidence.signature_score) : "no match"}
-                                                    </p>
-                                                </div>
-                                                <div title={`Similar spelling score: ${candidate.evidence.name_similarity.toFixed(3)}`}>
-                                                    <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Similar spelling</p>
-                                                    <p className="mt-1 text-headline-sm font-headline-md text-primary">{formatPercent(candidate.evidence.name_similarity)}</p>
-                                                </div>
-                                                <div title={`Shared name words score: ${(candidate.evidence.token_overlap ?? 0).toFixed(3)}`}>
-                                                    <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Shared name words</p>
-                                                    <p className="mt-1 text-headline-sm font-headline-md text-primary">{formatPercent(candidate.evidence.token_overlap)}</p>
-                                                </div>
+                                                {rows.map((row) => (
+                                                    <div key={`${candidate.id}-${row.label}`} title={row.title}>
+                                                        <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">{row.label}</p>
+                                                        <p className="mt-1 text-headline-sm font-headline-md text-primary">{row.value}</p>
+                                                    </div>
+                                                ))}
                                             </div>
                                         )}
                                     </div>
