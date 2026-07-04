@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 
 	"memento/backend/internal/person"
@@ -134,5 +136,117 @@ func TestGetPeopleMergeSuggestionsReturnsPaginationMetadata(t *testing.T) {
 	}
 	if response.Total != 3 || response.Limit != 2 || response.Offset != 1 || len(response.Suggestions) != 2 {
 		t.Fatalf("response = %+v, want total 3, limit 2, offset 1, two suggestions", response)
+	}
+}
+
+func TestPostPeopleMergeDecisionAcceptsReversedDirection(t *testing.T) {
+	srv := newMergeSuggestionsTestServer(t)
+	ctx := context.Background()
+	shortName := seedMergeSuggestionPerson(t, srv.db, "George", "george@example.com", false)
+	fullName := seedMergeSuggestionPerson(t, srv.db, "George Chiramattel", "george.c@example.com", false)
+	if err := person.UpsertMergeSuggestion(ctx, srv.db, person.MergeSuggestionInput{
+		PersonAID:      shortName,
+		PersonBID:      fullName,
+		Sources:        []string{person.LinkSourceJaroWinkler},
+		NameSimilarity: 0.95,
+		CombinedScore:  0.95,
+		ScoresStale:    true,
+	}); err != nil {
+		t.Fatalf("upsert suggestion: %v", err)
+	}
+	rows, err := person.ListMergeSuggestions(ctx, srv.db, person.ListMergeSuggestionOptions{})
+	if err != nil {
+		t.Fatalf("list suggestions: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("suggestions = %+v, want one", rows)
+	}
+
+	body := `{"id":"` + strconv.FormatInt(rows[0].ID, 10) + `","decision":"accept","keep_person_id":` + strconv.FormatInt(fullName, 10) + `,"merge_person_id":` + strconv.FormatInt(shortName, 10) + `}`
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/people/merge-decision", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	srv.mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+	}
+	var response struct {
+		FromID int64 `json:"from_id"`
+		IntoID int64 `json:"into_id"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&response); err != nil {
+		t.Fatal(err)
+	}
+	if response.FromID != shortName || response.IntoID != fullName {
+		t.Fatalf("direction = %d into %d, want %d into %d", response.FromID, response.IntoID, shortName, fullName)
+	}
+	var shortRows, fullRows int
+	if err := srv.db.QueryRow(`SELECT COUNT(*) FROM memento_person WHERE id = ?`, shortName).Scan(&shortRows); err != nil {
+		t.Fatalf("count short person: %v", err)
+	}
+	if err := srv.db.QueryRow(`SELECT COUNT(*) FROM memento_person WHERE id = ?`, fullName).Scan(&fullRows); err != nil {
+		t.Fatalf("count full person: %v", err)
+	}
+	if shortRows != 0 || fullRows != 1 {
+		t.Fatalf("person rows short=%d full=%d, want short removed and full kept", shortRows, fullRows)
+	}
+}
+
+func TestPostPeopleMergeDecisionRejectsInvalidDirectionOverride(t *testing.T) {
+	srv := newMergeSuggestionsTestServer(t)
+	ctx := context.Background()
+	a := seedMergeSuggestionPerson(t, srv.db, "Ann One", "ann.one@example.com", false)
+	b := seedMergeSuggestionPerson(t, srv.db, "Ann Two", "ann.two@example.com", false)
+	other := seedMergeSuggestionPerson(t, srv.db, "Other Person", "other@example.com", false)
+	if err := person.UpsertMergeSuggestion(ctx, srv.db, person.MergeSuggestionInput{
+		PersonAID:      a,
+		PersonBID:      b,
+		Sources:        []string{person.LinkSourceJaroWinkler},
+		NameSimilarity: 0.95,
+		CombinedScore:  0.95,
+		ScoresStale:    true,
+	}); err != nil {
+		t.Fatalf("upsert suggestion: %v", err)
+	}
+	rows, err := person.ListMergeSuggestions(ctx, srv.db, person.ListMergeSuggestionOptions{})
+	if err != nil {
+		t.Fatalf("list suggestions: %v", err)
+	}
+	body := `{"id":"` + strconv.FormatInt(rows[0].ID, 10) + `","decision":"accept","keep_person_id":` + strconv.FormatInt(a, 10) + `,"merge_person_id":` + strconv.FormatInt(other, 10) + `}`
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/people/merge-decision", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	srv.mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestPostPeopleMergeDecisionRejectsPartialDirectionOverride(t *testing.T) {
+	srv := newMergeSuggestionsTestServer(t)
+	ctx := context.Background()
+	a := seedMergeSuggestionPerson(t, srv.db, "Ann One", "ann.one@example.com", false)
+	b := seedMergeSuggestionPerson(t, srv.db, "Ann Two", "ann.two@example.com", false)
+	if err := person.UpsertMergeSuggestion(ctx, srv.db, person.MergeSuggestionInput{
+		PersonAID:      a,
+		PersonBID:      b,
+		Sources:        []string{person.LinkSourceJaroWinkler},
+		NameSimilarity: 0.95,
+		CombinedScore:  0.95,
+		ScoresStale:    true,
+	}); err != nil {
+		t.Fatalf("upsert suggestion: %v", err)
+	}
+	rows, err := person.ListMergeSuggestions(ctx, srv.db, person.ListMergeSuggestionOptions{})
+	if err != nil {
+		t.Fatalf("list suggestions: %v", err)
+	}
+	body := `{"id":"` + strconv.FormatInt(rows[0].ID, 10) + `","decision":"accept","keep_person_id":` + strconv.FormatInt(a, 10) + `}`
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/people/merge-decision", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	srv.mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
 	}
 }

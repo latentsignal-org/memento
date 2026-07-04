@@ -5,6 +5,14 @@ sparse: record choices that affect product behavior, data safety, architecture, 
 interfaces, or long-term maintenance. Do not record routine implementation details,
 temporary plans, TODOs, test notes, or decisions already obvious from code.
 
+## 2026-07-04 — Merge review accept may override canonical direction
+
+The People merge-review accept API may include `keep_person_id` and `merge_person_id`
+to let the reviewer choose which pending profile remains canonical. The backend must
+validate that both IDs are the two people in the pending suggestion before merging.
+Requests without an override keep using the backend-recommended direction for
+compatibility with older clients and tests.
+
 ## 2026-07-02 — Automatic identity links require deterministic mailbox equivalence
 
 Person resolution may automatically link addresses only when email normalization proves

@@ -2,7 +2,21 @@
 
 import {useCallback, useEffect, useMemo, useState} from "react";
 import Link from "next/link";
-import {ArrowLeft, Check, ChevronDown, GitMerge, Mail, RefreshCw, ShieldCheck, UserRound, X} from "lucide-react";
+import {
+    ArrowLeft,
+    ArrowRightLeft,
+    Check,
+    ChevronDown,
+    GitMerge,
+    Mail,
+    MoveDown,
+    MoveLeft,
+    MoveRight,
+    MoveUp,
+    RefreshCw,
+    ShieldCheck,
+    X,
+} from "lucide-react";
 
 type SortKey = "combined" | "name_similarity" | "token_overlap" | "signature";
 
@@ -51,12 +65,6 @@ const sortOptions: Array<{ value: SortKey; label: string }> = [
     {value: "token_overlap", label: "Shared name words"},
     {value: "signature", label: "Mutual contacts"},
 ];
-
-function scoreTone(score: number) {
-    if (score >= 95) return "bg-primary text-primary-foreground";
-    if (score >= 75) return "bg-primary-fixed text-on-primary-fixed-variant";
-    return "bg-surface-container-high text-on-surface-variant";
-}
 
 function initials(name: string) {
     return name
@@ -191,6 +199,66 @@ function evidenceRows(candidate: MergeCandidate) {
     return rows;
 }
 
+function selectedKeepPerson(candidate: MergeCandidate, overrideKeepId?: number) {
+    return (
+        candidate.people.find((person) => person.id === overrideKeepId) ??
+        candidate.people.find((person) => person.id === candidate.recommended_keep_id) ??
+        candidate.people[0]
+    );
+}
+
+function selectedMergePerson(candidate: MergeCandidate, keepId: number) {
+    return (
+        candidate.people.find((person) => person.id !== keepId) ??
+        candidate.people.find((person) => person.id === candidate.recommended_merge_id) ??
+        candidate.people[0]
+    );
+}
+
+function suggestionReason(candidate: MergeCandidate) {
+    const strongest = topSignalLabel(candidate).toLowerCase();
+    if (candidate.confidence > 0) {
+        return `Suggested because ${strongest} is the strongest signal, with a ${candidate.confidence}% match score.`;
+    }
+    return `Suggested because ${strongest} is the strongest available signal.`;
+}
+
+function MergeProfileCard({person, isKeep}: { person: MergePerson; isKeep: boolean }) {
+    return (
+        <div
+            className={`rounded-2xl border p-4 ${
+                isKeep ? "border-primary/30 bg-white shadow-sm" : "border-outline-variant/50 bg-surface-container"
+            }`}
+        >
+            <div className="flex items-start gap-3">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary-fixed text-ui-medium font-bold text-on-primary-fixed-variant">
+                    {initials(person.name)}
+                </div>
+                <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="min-w-0 truncate text-ui-medium font-bold text-on-surface">{person.name}</h3>
+                    </div>
+                    <div className="mt-2 min-h-6">
+                        {isKeep && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-primary-fixed px-2.5 py-1 text-[11px] font-bold text-on-primary-fixed-variant">
+                                <ShieldCheck size={12}/>
+                                Canonical Profile
+                            </span>
+                        )}
+                    </div>
+                    <p className="mt-1 flex items-center gap-1 truncate font-mono text-[11px] text-on-surface-variant">
+                        <Mail size={12}/>
+                        {person.email}
+                    </p>
+                    <p className="mt-2 text-[11px] text-on-surface-variant">
+                        {person.message_count.toLocaleString()} messages · last seen {formatDate(person.last_seen)}
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function PeopleMergeReviewPage() {
     const [candidates, setCandidates] = useState<MergeCandidate[]>([]);
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -199,6 +267,7 @@ export default function PeopleMergeReviewPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [decidingId, setDecidingId] = useState<string | null>(null);
+    const [keepOverrides, setKeepOverrides] = useState<Record<string, number>>({});
     const [error, setError] = useState<string | null>(null);
     const [notice, setNotice] = useState<string | null>(null);
 
@@ -217,7 +286,8 @@ export default function PeopleMergeReviewPage() {
                 setCandidates((prev) => [...prev, ...suggestions]);
             } else {
                 setCandidates(suggestions);
-                setExpanded(new Set(suggestions.slice(0, 2).map((candidate) => candidate.id)));
+                setExpanded(new Set());
+                setKeepOverrides({});
             }
         } catch (err) {
             setError(err instanceof Error ? err.message : String(err));
@@ -250,11 +320,17 @@ export default function PeopleMergeReviewPage() {
         setDecidingId(candidate.id);
         setError(null);
         setNotice(null);
+        const keepPerson = selectedKeepPerson(candidate, keepOverrides[candidate.id]);
+        const mergePerson = selectedMergePerson(candidate, keepPerson.id);
+        const body =
+            decision === "accept"
+                ? {id: candidate.id, decision, keep_person_id: keepPerson.id, merge_person_id: mergePerson.id}
+                : {id: candidate.id, decision};
         try {
             const res = await fetch("/api/people/merge-decision", {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({id: candidate.id, decision}),
+                body: JSON.stringify(body),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || `merge decision: ${res.status}`);
@@ -263,6 +339,11 @@ export default function PeopleMergeReviewPage() {
             setExpanded((prev) => {
                 const next = new Set(prev);
                 next.delete(candidate.id);
+                return next;
+            });
+            setKeepOverrides((prev) => {
+                const next = {...prev};
+                delete next[candidate.id];
                 return next;
             });
             if (decision === "accept") {
@@ -277,88 +358,60 @@ export default function PeopleMergeReviewPage() {
 
     return (
         <main className="pt-16 min-h-screen bg-background text-on-surface">
-            <div className="mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-6 px-6 py-10 lg:grid-cols-12">
-                <div className="lg:col-span-8">
-                    <Link
-                        href="/people"
-                        className="mb-6 inline-flex items-center gap-2 text-ui-small font-bold text-on-surface-variant hover:text-primary"
-                    >
-                        <ArrowLeft size={16}/>
-                        Back to People
-                    </Link>
-                    <header>
-                        <h1 className="text-display-lg font-display-lg text-primary tracking-tight">Merge People</h1>
-                        <p className="mt-3 max-w-[780px] text-body-reading font-body-reading leading-relaxed text-on-surface-variant">
-                            Review suggested duplicate people one at a time. Automatic resolution only links deterministic mailbox matches; these rows need human confirmation.
-                        </p>
-                    </header>
-                </div>
-
-                <aside className="lg:col-span-4">
-                    <div className="rounded-2xl border border-primary/15 bg-primary p-6 text-primary-foreground shadow-xl">
-                        <p className="text-[11px] font-bold uppercase tracking-[0.18em] opacity-75">Pending review</p>
-                        <div className="mt-5 grid grid-cols-2 gap-4">
-                            <div>
-                                <p className="text-headline-md font-headline-md">{totalCount}</p>
-                                <p className="text-[11px] uppercase tracking-wide opacity-70">Suggestions</p>
-                                {totalCount > candidates.length && (
-                                    <p className="mt-1 text-[11px] opacity-70">{candidates.length} loaded</p>
-                                )}
-                            </div>
-                            <div>
-                                <p className="text-headline-md font-headline-md">{pendingMessageCount.toLocaleString()}</p>
-                                <p className="text-[11px] uppercase tracking-wide opacity-70">Loaded messages</p>
-                            </div>
-                        </div>
-                    </div>
-                </aside>
+            <div className="mx-auto w-full max-w-[1180px] px-6 py-10">
+                <Link
+                    href="/people"
+                    className="mb-6 inline-flex items-center gap-2 text-ui-small font-bold text-on-surface-variant hover:text-primary"
+                >
+                    <ArrowLeft size={16}/>
+                    Back to People
+                </Link>
+                <header>
+                    <h1 className="text-display-lg font-display-lg text-primary tracking-tight">Merge People</h1>
+                    <p className="mt-3 text-body-reading font-body-reading leading-relaxed text-on-surface-variant">
+                        Review suggested duplicate people one pair at a time. Choose the canonical profile, then accept the merge or dismiss it so it does not return.
+                    </p>
+                </header>
             </div>
 
-            <section className="mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-6 px-6 pb-12 lg:grid-cols-12">
-                <aside className="lg:col-span-3">
-                    <div className="sticky top-24 space-y-4">
-                        <div className="rounded-2xl border border-outline-variant/50 bg-surface-container-low p-5 shadow-sm">
-                            <div className="flex items-center gap-2 text-primary">
-                                <GitMerge size={18}/>
-                                <h2 className="text-ui-medium font-bold">Sort review queue</h2>
-                            </div>
-                            <label className="mt-4 block">
-                                <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">Scheme</span>
-                                <select
-                                    value={sortBy}
-                                    onChange={(event) => setSortBy(event.target.value as SortKey)}
-                                    className="w-full rounded-lg border border-outline-variant bg-white px-3 py-2 text-ui-small font-bold text-on-surface outline-none focus:border-primary"
-                                >
-                                    {sortOptions.map((option) => (
-                                        <option key={option.value} value={option.value}>{option.label}</option>
-                                    ))}
-                                </select>
+            <section className="mx-auto w-full max-w-[1180px] px-6 pb-12">
+                <div className="mb-6 rounded-xl border border-outline-variant/50 bg-white px-4 py-3 shadow-sm">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                            <label className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+                                <span className="flex items-center gap-2 text-ui-small font-bold text-primary">
+                                    <GitMerge size={16}/>
+                                    Sort
+                                </span>
+                                <span className="relative block w-full sm:w-56">
+                                    <select
+                                        value={sortBy}
+                                        onChange={(event) => setSortBy(event.target.value as SortKey)}
+                                        className="w-full appearance-none rounded-lg border border-outline-variant bg-white px-3 py-2 pr-9 text-ui-small font-bold text-on-surface outline-none focus:border-primary"
+                                    >
+                                        {sortOptions.map((option) => (
+                                            <option key={option.value} value={option.value}>{option.label}</option>
+                                        ))}
+                                    </select>
+                                    <ChevronDown
+                                        size={15}
+                                        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant"
+                                    />
+                                </span>
                             </label>
-                            <button
-                                onClick={() => void loadSuggestions(sortBy)}
-                                disabled={isLoading}
-                                className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-outline-variant px-3 py-2 text-ui-small font-bold text-on-surface-variant hover:bg-white disabled:opacity-40"
-                            >
-                                <RefreshCw size={15} className={isLoading ? "animate-spin" : ""}/>
-                                Refresh
-                            </button>
-                            {notice && <p className="mt-4 text-ui-small font-bold text-primary">{notice}</p>}
-                            {error && <p className="mt-4 text-ui-small font-bold text-red-700">{error}</p>}
                         </div>
 
-                        <div className="rounded-2xl border border-outline-variant/50 bg-white p-5">
-                            <div className="flex items-center gap-2 text-primary">
-                                <ShieldCheck size={18}/>
-                                <h2 className="text-ui-medium font-bold">Review policy</h2>
-                            </div>
-                            <p className="mt-3 text-ui-small leading-relaxed text-on-surface-variant">
-                                Accept merges the pair immediately. Not the same person removes the suggestion and it will not return on reruns.
-                            </p>
+                        <div className="flex flex-wrap gap-x-5 gap-y-1 text-ui-small text-on-surface-variant">
+                            <span><strong className="text-primary">{totalCount.toLocaleString()}</strong> suggestions</span>
+                            {totalCount > candidates.length && <span><strong className="text-primary">{candidates.length}</strong> loaded</span>}
+                            <span><strong className="text-primary">{pendingMessageCount.toLocaleString()}</strong> loaded messages</span>
                         </div>
                     </div>
-                </aside>
+                    {notice && <p className="mt-3 text-ui-small font-bold text-primary">{notice}</p>}
+                    {error && <p className="mt-3 text-ui-small font-bold text-red-700">{error}</p>}
+                </div>
 
-                <div className="space-y-5 lg:col-span-9">
+                <div className="space-y-5">
                     {isLoading && (
                         <div className="rounded-2xl border border-outline-variant/50 bg-surface-container-low p-10 text-center">
                             <RefreshCw className="mx-auto animate-spin text-primary"/>
@@ -376,128 +429,106 @@ export default function PeopleMergeReviewPage() {
 
                     {candidates.map((candidate) => {
                         const isExpanded = expanded.has(candidate.id);
-                        const keepPerson = candidate.people.find((person) => person.id === candidate.recommended_keep_id) ?? candidate.people[0];
-                        const mergePerson = candidate.people.find((person) => person.id === candidate.recommended_merge_id) ?? candidate.people[1] ?? candidate.people[0];
-                        const graphSignal = hasGraphSignal(candidate);
+                        const keepPerson = selectedKeepPerson(candidate, keepOverrides[candidate.id]);
+                        const firstPerson = candidate.people[0];
+                        const secondPerson = candidate.people[1] ?? candidate.people[0];
+                        const arrowPointsForward = keepPerson.id === secondPerson.id;
                         const rows = evidenceRows(candidate);
 
                         return (
-                            <article key={candidate.id} className="overflow-hidden rounded-2xl border border-outline-variant/50 bg-surface-container-low shadow-sm">
-                                <div className="grid grid-cols-1 gap-0 lg:grid-cols-[1fr_250px]">
-                                    <div className="p-5 md:p-6">
-                                        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                                            <div className="min-w-0">
-                                                <div className="flex flex-wrap items-center gap-2">
-                                                    <span className="rounded-full bg-primary px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-primary-foreground">
-                                                        {graphSignal ? "Social-graph signal" : "Name signal only"}
-                                                    </span>
-                                                    {graphSignal && (
-                                                        <span className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${scoreTone(candidate.confidence)}`}>
-                                                            Match score {candidate.confidence}%
-                                                        </span>
+                            <article key={candidate.id} className="rounded-2xl border border-outline-variant/50 bg-surface-container-low p-5 shadow-sm">
+                                <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_220px]">
+                                    <div>
+                                        <h2 className="line-clamp-2 text-headline-md font-headline-md font-bold text-primary">
+                                            {candidate.people.map((person) => person.name).join(" + ")}
+                                        </h2>
+
+                                        <div className="mt-5 grid grid-cols-1 items-stretch gap-3 md:grid-cols-[minmax(0,1fr)_72px_minmax(0,1fr)]">
+                                            <MergeProfileCard person={firstPerson} isKeep={firstPerson.id === keepPerson.id}/>
+
+                                            <div className="flex items-center justify-center">
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setKeepOverrides((prev) => ({
+                                                            ...prev,
+                                                            [candidate.id]: arrowPointsForward ? firstPerson.id : secondPerson.id,
+                                                        }))
+                                                    }
+                                                    disabled={decidingId !== null || firstPerson.id === secondPerson.id}
+                                                    className="group flex min-h-16 w-full flex-col items-center justify-center gap-2 rounded-xl border border-outline-variant/60 bg-white px-2 py-3 text-on-surface-variant hover:border-primary/45 hover:bg-surface-container-low hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+                                                    aria-label="Reverse merge direction"
+                                                    title="Reverse merge direction"
+                                                >
+                                                    {arrowPointsForward ? (
+                                                        <MoveRight size={24} className="hidden md:block"/>
+                                                    ) : (
+                                                        <MoveLeft size={24} className="hidden md:block"/>
                                                     )}
-                                                    <span className="rounded-full bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">
-                                                        Top signal: {topSignalLabel(candidate)}
+                                                    {arrowPointsForward ? (
+                                                        <MoveDown size={24} className="md:hidden"/>
+                                                    ) : (
+                                                        <MoveUp size={24} className="md:hidden"/>
+                                                    )}
+                                                    <span className="flex h-7 w-7 items-center justify-center rounded-full border border-outline-variant bg-white text-primary group-hover:border-primary/35">
+                                                        <ArrowRightLeft size={15}/>
                                                     </span>
-                                                </div>
-                                                <h2 className="mt-3 text-headline-md font-headline-md font-bold text-primary">
-                                                    {candidate.people.map((person) => person.name).join(" + ")}
-                                                </h2>
-                                                <p className="mt-1 text-ui-small text-on-surface-variant">
-                                                    If accepted: merge <strong>{mergePerson.name}</strong> into <strong>{keepPerson.name}</strong>.
-                                                </p>
+                                                    <span className="text-[10px] font-bold uppercase tracking-wide">Swap</span>
+                                                </button>
                                             </div>
+
+                                            <MergeProfileCard person={secondPerson} isKeep={secondPerson.id === keepPerson.id}/>
                                         </div>
 
-                                        <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
-                                            {candidate.people.map((person) => {
-                                                const isKeep = person.id === candidate.recommended_keep_id;
-                                                return (
-                                                    <div
-                                                        key={person.id}
-                                                        className={`rounded-2xl border p-4 ${
-                                                            isKeep ? "border-primary/30 bg-white shadow-sm" : "border-outline-variant/50 bg-surface-container"
-                                                        }`}
-                                                    >
-                                                        <div className="flex items-start gap-3">
-                                                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary-fixed text-ui-medium font-bold text-on-primary-fixed-variant">
-                                                                {initials(person.name)}
-                                                            </div>
-                                                            <div className="min-w-0 flex-1">
-                                                                <div className="flex items-center gap-2">
-                                                                    <h3 className="truncate text-ui-medium font-bold text-on-surface">{person.name}</h3>
-                                                                    {isKeep && <Check size={15} className="shrink-0 text-primary"/>}
-                                                                </div>
-                                                                <p className="mt-1 flex items-center gap-1 truncate font-mono text-[11px] text-on-surface-variant">
-                                                                    <Mail size={12}/>
-                                                                    {person.email}
-                                                                </p>
-                                                                <p className="mt-2 text-[11px] text-on-surface-variant">
-                                                                    {person.message_count.toLocaleString()} messages · last seen {formatDate(person.last_seen)}
-                                                                </p>
-                                                                {person.aliases && person.aliases.length > 1 && (
-                                                                    <p className="mt-1 text-[11px] text-on-surface-variant">{person.aliases.length} aliases linked</p>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
+                                        <p className="mt-5 text-ui-small text-on-surface-variant">{suggestionReason(candidate)}</p>
 
                                         <button
                                             onClick={() => toggleExpanded(candidate.id)}
-                                            className="mt-5 inline-flex items-center gap-2 text-ui-small font-bold text-primary hover:underline"
+                                            className="mt-3 inline-flex items-center gap-2 text-ui-small font-bold text-primary hover:underline"
                                         >
                                             <ChevronDown size={16} className={isExpanded ? "rotate-180 transition" : "transition"}/>
                                             {isExpanded ? "Hide evidence" : "Show evidence"}
                                         </button>
 
                                         {isExpanded && (
-                                            <div className="mt-5 grid grid-cols-1 gap-4 rounded-2xl border border-outline-variant/40 bg-white p-4 md:grid-cols-4">
+                                            <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
                                                 {rows.map((row) => (
-                                                    <div key={`${candidate.id}-${row.label}`} title={row.title}>
-                                                        <p className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">{row.label}</p>
-                                                        <p className="mt-1 text-headline-sm font-headline-md text-primary">{row.value}</p>
+                                                    <div key={`${candidate.id}-${row.label}`} title={row.title} className="rounded-xl bg-white px-3 py-2">
+                                                        <p className="text-[10px] font-bold uppercase tracking-wide text-on-surface-variant">{row.label}</p>
+                                                        <p className="mt-1 text-ui-small font-bold text-primary">{row.value}</p>
                                                     </div>
                                                 ))}
                                             </div>
                                         )}
                                     </div>
 
-                                    <div className="flex flex-col justify-between border-t border-outline-variant/40 bg-white p-5 lg:border-l lg:border-t-0">
+                                    <aside className="flex flex-col justify-between rounded-2xl bg-white p-4">
                                         <div>
                                             <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">Decision</p>
                                             <div className="mt-4 space-y-2">
                                                 <button
                                                     onClick={() => void decide(candidate, "accept")}
                                                     disabled={decidingId !== null}
-                                                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-ui-small font-bold text-primary-foreground hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40"
+                                                    className="grid w-full grid-cols-[18px_1fr] items-center gap-2 rounded-lg bg-primary px-3 py-2.5 text-ui-small font-bold text-primary-foreground hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40"
                                                 >
                                                     {decidingId === candidate.id ? <RefreshCw size={16} className="animate-spin"/> : <Check size={16}/>}
-                                                    Accept merge
+                                                    <span className="text-left">Accept merge</span>
                                                 </button>
                                                 <button
                                                     onClick={() => void decide(candidate, "reject")}
                                                     disabled={decidingId !== null}
-                                                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-outline-variant px-4 py-3 text-ui-small font-bold text-on-surface-variant hover:bg-surface-container disabled:cursor-not-allowed disabled:opacity-40"
+                                                    className="grid w-full grid-cols-[18px_1fr] items-center gap-2 rounded-lg border border-outline-variant bg-white px-3 py-2.5 text-ui-small font-bold text-on-surface-variant hover:bg-surface-container disabled:cursor-not-allowed disabled:opacity-40"
                                                 >
                                                     <X size={16}/>
-                                                    Not the same person
+                                                    <span className="text-left">Not the same person</span>
                                                 </button>
                                             </div>
                                         </div>
 
-                                        <div className="mt-6 rounded-2xl bg-surface-container-low p-4">
-                                            <div className="flex items-center gap-2 text-primary">
-                                                <UserRound size={16}/>
-                                                <p className="text-ui-small font-bold">Merge preview</p>
-                                            </div>
-                                            <p className="mt-2 text-ui-small text-on-surface-variant">
-                                                Notes, facets, aliases, and project memberships move into <strong>{keepPerson.name}</strong>.
-                                            </p>
-                                        </div>
-                                    </div>
+                                        <p className="mt-5 text-ui-small text-on-surface-variant">
+                                            Notes, facets, aliases, and project memberships move into <strong>{keepPerson.name}</strong>.
+                                        </p>
+                                    </aside>
                                 </div>
                             </article>
                         );

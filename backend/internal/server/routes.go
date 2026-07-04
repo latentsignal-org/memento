@@ -645,9 +645,15 @@ func recommendedMergeDirection(a, b peopleMergeProfile) (keepID, mergeID int64) 
 	return b.ID, a.ID
 }
 
+func matchesMergeSuggestionPair(keepID, mergeID, personAID, personBID int64) bool {
+	return (keepID == personAID && mergeID == personBID) || (keepID == personBID && mergeID == personAID)
+}
+
 type peopleMergeDecisionRequest struct {
-	ID       string `json:"id"`
-	Decision string `json:"decision"`
+	ID            string `json:"id"`
+	Decision      string `json:"decision"`
+	KeepPersonID  int64  `json:"keep_person_id,omitempty"`
+	MergePersonID int64  `json:"merge_person_id,omitempty"`
 }
 
 func (s *Server) handlePostPeopleMergeDecision(w http.ResponseWriter, r *http.Request) {
@@ -701,6 +707,21 @@ func (s *Server) handlePostPeopleMergeDecision(w http.ResponseWriter, r *http.Re
 			return
 		}
 		keepID, mergeID := recommendedMergeDirection(aProfile, bProfile)
+		if req.KeepPersonID != 0 || req.MergePersonID != 0 {
+			if req.KeepPersonID <= 0 || req.MergePersonID <= 0 {
+				writeError(w, http.StatusBadRequest, fmt.Errorf("keep_person_id and merge_person_id are both required when overriding merge direction"))
+				return
+			}
+			if req.KeepPersonID == req.MergePersonID {
+				writeError(w, http.StatusBadRequest, fmt.Errorf("keep_person_id and merge_person_id must differ"))
+				return
+			}
+			if !matchesMergeSuggestionPair(req.KeepPersonID, req.MergePersonID, row.PersonAID, row.PersonBID) {
+				writeError(w, http.StatusUnprocessableEntity, fmt.Errorf("merge direction ids must match suggestion pair %d/%d", row.PersonAID, row.PersonBID))
+				return
+			}
+			keepID, mergeID = req.KeepPersonID, req.MergePersonID
+		}
 		result, err := person.MergePersons(r.Context(), s.db, mergeID, keepID)
 		if err != nil {
 			writeError(w, http.StatusUnprocessableEntity, fmt.Errorf("merge %d into %d: %w", mergeID, keepID, err))
