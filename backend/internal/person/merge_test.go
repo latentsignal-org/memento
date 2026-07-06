@@ -220,10 +220,9 @@ func TestFindMergeCandidates_DifferentNeighborhoodsRejected(t *testing.T) {
 	}
 }
 
-// TestFindMergeCandidates_NameMismatchRejected protects against the case
-// where two people happen to share an email-local token by coincidence
-// ("info@a.com" vs "info@b.com") — names should disambiguate.
-func TestFindMergeCandidates_NameMismatchRejected(t *testing.T) {
+// TestFindMergeCandidates_NameMismatchWithStrongGraphSurfaced confirms graph
+// evidence is no longer blocked by a hard name gate.
+func TestFindMergeCandidates_NameMismatchWithStrongGraphSurfaced(t *testing.T) {
 	db := newMergeTestDB(t)
 	p1 := seedPerson(t, db, "Alice Wonderland", "alice@x.com")
 	p2 := seedPerson(t, db, "Bob Burger", "bob@x.com")
@@ -239,9 +238,41 @@ func TestFindMergeCandidates_NameMismatchRejected(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FindMergeCandidates: %v", err)
 	}
+	var found *MergeCandidate
 	for _, c := range cands {
 		if (c.FromID == p1 && c.IntoID == p2) || (c.FromID == p2 && c.IntoID == p1) {
-			t.Errorf("disjoint-name pair should not be surfaced: %+v", c)
+			found = &c
+			break
+		}
+	}
+	if found == nil {
+		t.Fatalf("expected graph-backed divergent-name candidate, got %+v", cands)
+	}
+	if found.NameScore != 0 || found.SignatureScore < 0.9 {
+		t.Fatalf("unexpected scores for divergent-name graph candidate: %+v", found)
+	}
+}
+
+func TestFindMergeCandidates_NameMismatchContainmentRejected(t *testing.T) {
+	db := newMergeTestDB(t)
+	large := seedPerson(t, db, "Alice Wonderland", "alice@x.com")
+	small := seedPerson(t, db, "Bob Burger", "bob@x.com")
+	c1 := seedPerson(t, db, "Carol One", "c1@x.com")
+	c2 := seedPerson(t, db, "Carol Two", "c2@x.com")
+	c3 := seedPerson(t, db, "Carol Three", "c3@x.com")
+
+	seedEdge(t, db, large, c1, 100)
+	seedEdge(t, db, large, c2, 100)
+	seedEdge(t, db, large, c3, 100)
+	seedEdge(t, db, small, c1, 100)
+
+	cands, err := FindMergeCandidates(context.Background(), db, DefaultMergeOptions())
+	if err != nil {
+		t.Fatalf("FindMergeCandidates: %v", err)
+	}
+	for _, c := range cands {
+		if (c.FromID == large && c.IntoID == small) || (c.FromID == small && c.IntoID == large) {
+			t.Fatalf("name-mismatch containment pair should not be surfaced: %+v", c)
 		}
 	}
 }
@@ -291,11 +322,11 @@ func TestMergePersons_HappyPath(t *testing.T) {
 
 	// Emails: both ann@a.com and ann@a-alt.com transferred and locked.
 	var emailRows int
-	if err := db.QueryRow(`SELECT COUNT(*) FROM memento_person_email WHERE person_id = ? AND locked = 1 AND link_source = ?`, into, LinkSourceSignatureMerge).Scan(&emailRows); err != nil {
+	if err := db.QueryRow(`SELECT COUNT(*) FROM memento_person_email WHERE person_id = ? AND locked = 1 AND link_source = ?`, into, LinkSourceManualMerge).Scan(&emailRows); err != nil {
 		t.Fatalf("count emails: %v", err)
 	}
 	if emailRows != 2 {
-		t.Errorf("emails transferred = %d, want 2 (locked + signature_merge)", emailRows)
+		t.Errorf("emails transferred = %d, want 2 (locked + manual_merge)", emailRows)
 	}
 	if result.EmailsTransferred != 2 {
 		t.Errorf("result.EmailsTransferred = %d, want 2", result.EmailsTransferred)
@@ -349,6 +380,53 @@ func TestMergePersons_HappyPath(t *testing.T) {
 	db.QueryRow(`SELECT COUNT(*) FROM memento_person WHERE id = ?`, from).Scan(&fromRows)
 	if fromRows != 0 {
 		t.Errorf("from person still exists (rows=%d)", fromRows)
+	}
+}
+
+func TestMergePersons_ResolvesAffectedSuggestions(t *testing.T) {
+	db := newMergeTestDB(t)
+	ctx := context.Background()
+	from := seedPerson(t, db, "Jane Work", "jane@work.example")
+	into := seedPerson(t, db, "Jane Home", "jane@home.example")
+	other := seedPerson(t, db, "Janet Other", "janet@example.com")
+	seedEmail(t, db, "jane@work.example", from, false)
+	seedEmail(t, db, "jane@home.example", into, false)
+	seedEmail(t, db, "janet@example.com", other, false)
+
+	for _, input := range []MergeSuggestionInput{
+		{PersonAID: from, PersonBID: into, Sources: []string{LinkSourceExactName}, NameSimilarity: 1, CombinedScore: 1, ScoresStale: true},
+		{PersonAID: from, PersonBID: other, Sources: []string{LinkSourceJaroWinkler}, NameSimilarity: 0.95, CombinedScore: 0.95, ScoresStale: true},
+		{PersonAID: into, PersonBID: other, Sources: []string{LinkSourceJaccard}, TokenOverlap: 0.8, CombinedScore: 0.8, ScoresStale: true},
+	} {
+		if err := UpsertMergeSuggestion(ctx, db, input); err != nil {
+			t.Fatalf("upsert suggestion: %v", err)
+		}
+	}
+
+	if _, err := MergePersons(ctx, db, from, into); err != nil {
+		t.Fatalf("MergePersons: %v", err)
+	}
+
+	accepted, err := ListMergeSuggestions(ctx, db, ListMergeSuggestionOptions{Status: "accepted"})
+	if err != nil {
+		t.Fatalf("list accepted: %v", err)
+	}
+	if len(accepted) != 1 || accepted[0].PersonAID != from || accepted[0].PersonBID != into {
+		t.Fatalf("accepted suggestions = %+v, want merged pair only", accepted)
+	}
+	rejected, err := ListMergeSuggestions(ctx, db, ListMergeSuggestionOptions{Status: "rejected"})
+	if err != nil {
+		t.Fatalf("list rejected: %v", err)
+	}
+	if len(rejected) != 1 || rejected[0].PersonAID != from || rejected[0].PersonBID != other {
+		t.Fatalf("rejected suggestions = %+v, want stale from/other pair only", rejected)
+	}
+	pending, err := ListMergeSuggestions(ctx, db, ListMergeSuggestionOptions{})
+	if err != nil {
+		t.Fatalf("list pending: %v", err)
+	}
+	if len(pending) != 1 || pending[0].PersonAID != into || pending[0].PersonBID != other {
+		t.Fatalf("pending suggestions = %+v, want into/other pair to remain", pending)
 	}
 }
 

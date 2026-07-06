@@ -32,9 +32,9 @@ type cluster struct {
 	Members []*clusterMember
 }
 
-// Resolve runs the deterministic-first matcher and (optionally) the fuzzy
-// second pass. It returns a slice of clusters; persistence is the caller's
-// job. Participants whose email is already locked in memento_person_email are
+// Resolve runs the deterministic-only matcher. It returns clusters suitable
+// for automatic persistence plus advisory suggestions that require review.
+// Participants whose email is already locked in memento_person_email are
 // skipped here — the caller layers them back in afterwards.
 func Resolve(
 	ctx context.Context,
@@ -111,58 +111,7 @@ func Resolve(
 		}
 	}
 
-	// Pass 2 — exact normalized display name. "Jane Smith (via Google
-	// Photos)" and "Jane Smith" both normalize to "jane smith"
-	// and merge here. Single-token names ("admin", "support") are skipped —
-	// see isGenericName. Members brought in via name match are re-tagged as
-	// exact_name; the absorbing cluster's original members keep their tags.
-	byName := map[string]int{}
-	for _, m := range members {
-		if m.NormalizedName == "" || isGenericName(m.NormalizedName) {
-			continue
-		}
-		current := clusters[m.ClusterID]
-		if current == nil {
-			continue
-		}
-		existingID, seen := byName[m.NormalizedName]
-		if !seen {
-			byName[m.NormalizedName] = current.ID
-			continue
-		}
-		existing := clusters[existingID]
-		if existing == nil {
-			byName[m.NormalizedName] = current.ID
-			continue
-		}
-		if existing.ID == current.ID {
-			continue
-		}
-		mergeClusters(clusters, existing, current, LinkSourceExactName, 0.95)
-		byName[m.NormalizedName] = existing.ID
-	}
-
-	// Pass 2b — forwarder unwrap. Any member whose original display name
-	// carried a forwarder parenthetical ("X (via Google Photos)") gets its
-	// per-member source re-tagged. This applies regardless of how the member
-	// joined its cluster — the evidence describes the address, not the merge.
-	for _, m := range members {
-		original := strings.TrimSpace(m.Participant.DisplayName)
-		if original == "" {
-			continue
-		}
-		if stripForwarderParenthetical(original) == "" {
-			continue
-		}
-		m.LinkSource = LinkSourceForwarderUnwrap
-		m.Confidence = 0.95
-	}
-
-	// Pass 3 — optional fuzzy pass. Only on members above the message-volume
-	// floor, and only against the current per-cluster canonical name.
-	if opts.IncludeFuzzy {
-		runFuzzyPass(members, clusters, opts)
-	}
+	report.Suggestions = collectResolveSuggestions(members, clusters, opts)
 
 	// Materialize a slice ordered by cluster size desc, message volume desc.
 	out := make([]cluster, 0, len(clusters))
@@ -192,18 +141,70 @@ func Resolve(
 	return report, out, nil
 }
 
-func runFuzzyPass(members []*clusterMember, clusters map[int]*cluster, opts ResolveOptions) {
-	// Build per-cluster canonical names from highest-volume member.
+type resolveSuggestionBuilder struct {
+	suggestions map[[2]int]*ResolveSuggestion
+}
+
+func collectResolveSuggestions(members []*clusterMember, clusters map[int]*cluster, opts ResolveOptions) []ResolveSuggestion {
+	builder := resolveSuggestionBuilder{suggestions: map[[2]int]*ResolveSuggestion{}}
+
+	byLiteralName := map[string][]int{}
+	byNormalizedName := map[string][]*clusterMember{}
+	for _, m := range members {
+		if m.ClusterID <= 0 {
+			continue
+		}
+		literal := normalizeLiteralName(m.Participant.DisplayName)
+		if literal != "" && !isGenericName(literal) {
+			byLiteralName[literal] = appendUniqueInt(byLiteralName[literal], m.ClusterID)
+		}
+		if m.NormalizedName != "" && !isGenericName(m.NormalizedName) {
+			byNormalizedName[m.NormalizedName] = append(byNormalizedName[m.NormalizedName], m)
+		}
+	}
+	for _, ids := range byLiteralName {
+		forEachClusterPair(ids, func(a, b int) {
+			builder.add(a, b, LinkSourceExactName, 1, 1)
+		})
+	}
+	for _, group := range byNormalizedName {
+		for i := 0; i < len(group); i++ {
+			for j := i + 1; j < len(group); j++ {
+				a, b := group[i], group[j]
+				if a.ClusterID == b.ClusterID {
+					continue
+				}
+				if stripForwarderParenthetical(a.Participant.DisplayName) == "" && stripForwarderParenthetical(b.Participant.DisplayName) == "" {
+					continue
+				}
+				builder.add(a.ClusterID, b.ClusterID, LinkSourceForwarderUnwrap, 1, jaccardTokens(a.NameTokens, b.NameTokens))
+			}
+		}
+	}
+	collectFuzzySuggestions(clusters, opts, &builder)
+
+	out := make([]ResolveSuggestion, 0, len(builder.suggestions))
+	for _, suggestion := range builder.suggestions {
+		sort.Strings(suggestion.Sources)
+		out = append(out, *suggestion)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].ClusterA != out[j].ClusterA {
+			return out[i].ClusterA < out[j].ClusterA
+		}
+		return out[i].ClusterB < out[j].ClusterB
+	})
+	return out
+}
+
+func collectFuzzySuggestions(clusters map[int]*cluster, opts ResolveOptions, builder *resolveSuggestionBuilder) {
 	type clusterKey struct {
 		clusterID int
 		name      string
 		tokens    []string
-		domain    string
 	}
 	var anchors []clusterKey
 	for _, c := range clusters {
-		// Skip clusters whose total volume is below the floor — fuzzy on
-		// low-volume contacts is the main source of false positives.
 		if clusterVolume(*c) < opts.MinMessagesForFuzzy {
 			continue
 		}
@@ -215,47 +216,86 @@ func runFuzzyPass(members []*clusterMember, clusters map[int]*cluster, opts Reso
 			clusterID: c.ID,
 			name:      anchor.NormalizedName,
 			tokens:    anchor.NameTokens,
-			domain:    anchor.Participant.Domain,
 		})
 	}
 
-	// For every unmerged anchor pair, decide whether to merge.
 	for i := 0; i < len(anchors); i++ {
 		for j := i + 1; j < len(anchors); j++ {
 			a, b := anchors[i], anchors[j]
 			if a.clusterID == b.clusterID {
 				continue
 			}
-			// Same domain is a weak signal — fuzzy on the local part of a
-			// shared corporate domain produces noisy merges. Require cross-
-			// domain evidence.
-			if a.domain != "" && a.domain == b.domain {
-				continue
-			}
 			jw := jaroWinkler(a.name, b.name)
 			jc := jaccardTokens(a.tokens, b.tokens)
-			var source string
-			var confidence float64
-			switch {
-			case jw >= opts.JaroThreshold:
-				source = LinkSourceJaroWinkler
-				confidence = jw
-			case jc >= opts.JaccardThreshold:
-				source = LinkSourceJaccard
-				confidence = jc
-			default:
-				continue
+			if jw >= opts.JaroThreshold {
+				builder.add(a.clusterID, b.clusterID, LinkSourceJaroWinkler, jw, jc)
 			}
-			ca := clusters[a.clusterID]
-			cb := clusters[b.clusterID]
-			if ca == nil || cb == nil {
-				continue
+			if jc >= opts.JaccardThreshold {
+				builder.add(a.clusterID, b.clusterID, LinkSourceJaccard, jw, jc)
 			}
-			mergeClusters(clusters, ca, cb, source, confidence)
-			// Anchors[i] / Anchors[j] are now stale; rebuilding mid-loop is
-			// expensive and Phase-0 fuzzy is single-shot, so just continue.
 		}
 	}
+}
+
+func (b *resolveSuggestionBuilder) add(clusterA, clusterB int, source string, nameSimilarity, tokenOverlap float64) {
+	if clusterA == clusterB {
+		return
+	}
+	if clusterA > clusterB {
+		clusterA, clusterB = clusterB, clusterA
+	}
+	key := [2]int{clusterA, clusterB}
+	suggestion := b.suggestions[key]
+	if suggestion == nil {
+		suggestion = &ResolveSuggestion{ClusterA: clusterA, ClusterB: clusterB}
+		b.suggestions[key] = suggestion
+	}
+	if !containsString(suggestion.Sources, source) {
+		suggestion.Sources = append(suggestion.Sources, source)
+	}
+	if nameSimilarity > suggestion.NameSimilarity {
+		suggestion.NameSimilarity = nameSimilarity
+	}
+	if tokenOverlap > suggestion.TokenOverlap {
+		suggestion.TokenOverlap = tokenOverlap
+	}
+}
+
+func normalizeLiteralName(name string) string {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return ""
+	}
+	name = strings.ToLower(name)
+	name = whitespaceRun.ReplaceAllString(name, " ")
+	return strings.TrimSpace(name)
+}
+
+func appendUniqueInt(values []int, value int) []int {
+	for _, existing := range values {
+		if existing == value {
+			return values
+		}
+	}
+	return append(values, value)
+}
+
+func forEachClusterPair(ids []int, fn func(a, b int)) {
+	sort.Ints(ids)
+	for i := 0; i < len(ids); i++ {
+		for j := i + 1; j < len(ids); j++ {
+			fn(ids[i], ids[j])
+		}
+	}
+}
+
+func containsString(values []string, value string) bool {
+	for _, existing := range values {
+		if existing == value {
+			return true
+		}
+	}
+	return false
 }
 
 func pickAnchor(c *cluster) *clusterMember {
@@ -277,58 +317,6 @@ func clusterVolume(c cluster) int64 {
 		sum += m.Participant.MessageCount
 	}
 	return sum
-}
-
-// mergeClusters folds `drop` into `keep`. Both sides' members are re-tagged
-// with the merge's evidence — the act of merging is symmetric, so the anchor
-// shouldn't keep a weaker tag than the addresses joining it. Only overwrite
-// when the merge evidence outranks the current tag; never downgrade.
-func mergeClusters(all map[int]*cluster, keep, drop *cluster, source string, confidence float64) {
-	if keep == nil || drop == nil || keep == drop {
-		return
-	}
-	upgrade := func(m *clusterMember) {
-		if linkSourceRank(source) > linkSourceRank(m.LinkSource) {
-			m.LinkSource = source
-			m.Confidence = confidence
-		}
-	}
-	for _, m := range keep.Members {
-		upgrade(m)
-	}
-	for _, m := range drop.Members {
-		m.ClusterID = keep.ID
-		upgrade(m)
-		keep.Members = append(keep.Members, m)
-	}
-	delete(all, drop.ID)
-}
-
-// linkSourceRank decides which evidence wins when two signals fire on the
-// same member. Manual always wins; forwarder_unwrap is the most specific
-// deterministic signal (the display name literally says "X via Y"); plus_tag
-// is next because it's identity-strong on the normalized email; exact_name
-// is a weaker deterministic match; fuzzy signals come last; the empty string
-// means "no evidence yet" and any signal upgrades it.
-func linkSourceRank(source string) int {
-	switch source {
-	case LinkSourceManual:
-		return 100
-	case LinkSourceForwarderUnwrap:
-		return 80
-	case LinkSourcePlusTag:
-		return 70
-	case LinkSourceExactName:
-		return 60
-	case LinkSourceJaroWinkler:
-		return 50
-	case LinkSourceJaccard:
-		return 40
-	case LinkSourceSingleton:
-		return 10
-	default:
-		return 0 // "" — no evidence
-	}
 }
 
 // isGenericName filters out display names that are too generic to use as a

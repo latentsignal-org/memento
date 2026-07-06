@@ -3,9 +3,16 @@
 packages:
   - .
 
+allowBuilds:
+  esbuild: true
+  msw: true
+  sharp: true
+  unrs-resolver: true
+
 # Dependencies allowed to run install/build scripts (pnpm blocks these by
 # default since v10). Listing a package that is absent is harmless.
 onlyBuiltDependencies:
   - esbuild
+  - msw
   - sharp
   - unrs-resolver

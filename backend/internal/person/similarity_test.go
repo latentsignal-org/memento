@@ -41,7 +41,7 @@ func TestJaroWinklerCatchesMinorVariations(t *testing.T) {
 
 func TestJaccardCatchesInsertedTokens(t *testing.T) {
 	// Jaro-Winkler weakness: inserted middle words. Jaccard on tokens picks
-	// these up — used as the second-pass fallback in runFuzzyPass.
+	// these up for advisory merge suggestions.
 	jw := jaroWinkler("tom hall", "tom fitzgerald hall")
 	if jw >= 0.85 {
 		t.Fatalf("test premise broken: jaroWinkler now %.3f >= 0.85", jw)
