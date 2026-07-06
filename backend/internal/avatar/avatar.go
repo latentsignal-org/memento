@@ -25,7 +25,6 @@ type Row struct {
 	MimeType     string
 	ByteSize     int64
 	UpstreamETag string
-	FetchedAt    string
 }
 
 type FetchResult struct {
@@ -37,7 +36,6 @@ type FetchResult struct {
 }
 
 type KnownAvatar struct {
-	Email     string
 	EmailHash string
 }
 

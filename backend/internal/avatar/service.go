@@ -6,9 +6,13 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
+	"sync"
+	"time"
 
 	"golang.org/x/sync/singleflight"
 )
+
+const knownHashCacheTTL = time.Minute
 
 type ImageResponse struct {
 	Bytes       []byte
@@ -20,6 +24,10 @@ type Service struct {
 	Fetcher  *Fetcher
 	group    singleflight.Group
 	outbound chan struct{}
+
+	knownMu       sync.Mutex
+	knownHashes   map[string]bool
+	knownHashesAt time.Time
 }
 
 func NewService(db *sql.DB, fetcher *Fetcher) *Service {
@@ -40,7 +48,7 @@ func (s *Service) Image(ctx context.Context, hash string, initials string, size 
 		return responseFromRow(row, hash, initials, size), nil
 	}
 
-	known, err := KnownHash(ctx, s.DB, hash)
+	known, err := s.knownHash(ctx, hash)
 	if err != nil {
 		return ImageResponse{}, err
 	}
@@ -77,6 +85,33 @@ func (s *Service) Image(ctx context.Context, hash string, initials string, size 
 		return ImageResponse{}, err
 	}
 	return responseFromRow(v.(Row), hash, initials, size), nil
+}
+
+func (s *Service) knownHash(ctx context.Context, hash string) (bool, error) {
+	now := time.Now()
+	s.knownMu.Lock()
+	if s.knownHashes != nil && now.Sub(s.knownHashesAt) < knownHashCacheTTL {
+		known := s.knownHashes[hash]
+		s.knownMu.Unlock()
+		return known, nil
+	}
+	s.knownMu.Unlock()
+
+	known, err := KnownHashes(ctx, s.DB)
+	if err != nil {
+		return false, err
+	}
+	next := make(map[string]bool, len(known))
+	for _, item := range known {
+		next[item.EmailHash] = true
+	}
+
+	s.knownMu.Lock()
+	s.knownHashes = next
+	s.knownHashesAt = now
+	result := s.knownHashes[hash]
+	s.knownMu.Unlock()
+	return result, nil
 }
 
 func responseFromRow(row Row, hash string, initials string, size int) ImageResponse {

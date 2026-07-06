@@ -76,6 +76,9 @@ func (f *Fetcher) Fetch(ctx context.Context, hash string) (FetchResult, error) {
 	if int64(len(body)) > maxAvatarBytes {
 		return FetchResult{}, fmt.Errorf("%w: avatar body exceeds %d bytes", ErrTransient, maxAvatarBytes)
 	}
+	if len(body) == 0 {
+		return FetchResult{}, fmt.Errorf("%w: empty avatar body", ErrTransient)
+	}
 	contentType := resp.Header.Get("Content-Type")
 	mimeType := normalizeImageMime(contentType, body)
 	if !strings.HasPrefix(mimeType, "image/") {

@@ -20,8 +20,15 @@ func (s *Server) handleGetAvatar(w http.ResponseWriter, r *http.Request) {
 	initials := avatar.SanitizeInitials(r.URL.Query().Get("i"))
 	img, err := s.avatars.Image(r.Context(), hash, initials, size)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
-		return
+		if isNotSetUp(err) {
+			img = avatar.ImageResponse{
+				Bytes:       avatar.FallbackSVG(hash, initials, size),
+				ContentType: "image/svg+xml; charset=utf-8",
+			}
+		} else {
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
 	}
 	etag := avatar.LocalETag(img.ContentType, img.Bytes)
 	w.Header().Set("Content-Type", img.ContentType)

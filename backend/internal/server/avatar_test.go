@@ -77,6 +77,23 @@ func TestHandleGetAvatarCachedNotFoundServesSVG(t *testing.T) {
 	}
 }
 
+func TestHandleGetAvatarMissingAvatarTableServesSVG(t *testing.T) {
+	srv := newSetupTestServer(t)
+	if _, err := srv.db.ExecContext(context.Background(), `DROP TABLE memento_avatar`); err != nil {
+		t.Fatal(err)
+	}
+	hash := avatar.HashEmail("reset@example.com")
+	req := httptest.NewRequest(http.MethodGet, "/api/avatar/"+hash+"?s=64&i=RE", nil)
+	rec := httptest.NewRecorder()
+	srv.mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+	}
+	if rec.Header().Get("Content-Type") != "image/svg+xml; charset=utf-8" || !strings.Contains(rec.Body.String(), ">RE<") {
+		t.Fatalf("unexpected SVG response: type=%q body=%q", rec.Header().Get("Content-Type"), rec.Body.String())
+	}
+}
+
 func TestHandleGetAvatarKnownMissFetchesAndPersists(t *testing.T) {
 	srv := newSetupTestServer(t)
 	ctx := context.Background()

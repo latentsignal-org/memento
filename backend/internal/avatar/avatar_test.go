@@ -116,6 +116,16 @@ func TestFetcher(t *testing.T) {
 			t.Fatalf("err = %v, want ErrTransient", err)
 		}
 	})
+	t.Run("empty image body", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "image/png")
+		}))
+		defer server.Close()
+		_, err := (&Fetcher{BaseURL: server.URL, Client: server.Client()}).Fetch(context.Background(), strings.Repeat("a", 64))
+		if !errors.Is(err, ErrTransient) {
+			t.Fatalf("err = %v, want ErrTransient", err)
+		}
+	})
 }
 
 func TestStoreRoundTripAndKnownHash(t *testing.T) {

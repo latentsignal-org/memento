@@ -498,7 +498,7 @@ export default function ConceptDetailClient({
                                                             <div
                                                                 className="w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center text-[10px] font-bold flex-shrink-0 overflow-hidden">
                                                                 {person.primary_email ? (
-                                                                    <img src={avatarUrl(person.primary_email, 56, initialsFromName(displayName, person.primary_email))}
+                                                                    <img src={avatarUrl(person.primary_email, 56, initialsFromName(person.canonical_name, person.primary_email))}
                                                                          alt={displayName}
                                                                          className="w-full h-full object-cover"/>
                                                                 ) : (

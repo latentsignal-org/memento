@@ -9,13 +9,13 @@ import (
 func Get(ctx context.Context, db *sql.DB, hash string) (Row, bool, error) {
 	var row Row
 	var image []byte
-	var mime, etag, fetched string
+	var mime, etag string
 	var byteSize sql.NullInt64
 	err := db.QueryRowContext(ctx, `
-		SELECT email_hash, status, image, COALESCE(mime_type, ''), byte_size, COALESCE(upstream_etag, ''), fetched_at
+		SELECT email_hash, status, image, COALESCE(mime_type, ''), byte_size, COALESCE(upstream_etag, '')
 		FROM memento_avatar
 		WHERE email_hash = ?`, hash).Scan(
-		&row.EmailHash, &row.Status, &image, &mime, &byteSize, &etag, &fetched,
+		&row.EmailHash, &row.Status, &image, &mime, &byteSize, &etag,
 	)
 	if err == sql.ErrNoRows {
 		return Row{}, false, nil
@@ -26,7 +26,6 @@ func Get(ctx context.Context, db *sql.DB, hash string) (Row, bool, error) {
 	row.Image = image
 	row.MimeType = mime
 	row.UpstreamETag = etag
-	row.FetchedAt = fetched
 	if byteSize.Valid {
 		row.ByteSize = byteSize.Int64
 	}
@@ -96,7 +95,7 @@ func KnownHashes(ctx context.Context, db *sql.DB) ([]KnownAvatar, error) {
 			continue
 		}
 		seen[email] = true
-		out = append(out, KnownAvatar{Email: email, EmailHash: HashEmail(email)})
+		out = append(out, KnownAvatar{EmailHash: HashEmail(email)})
 	}
 	return out, rows.Err()
 }

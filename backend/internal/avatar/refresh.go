@@ -12,7 +12,6 @@ type RefreshResult struct {
 	Found    int
 	NotFound int
 	Errors   int
-	Skipped  int
 }
 
 type RefreshOptions struct {
