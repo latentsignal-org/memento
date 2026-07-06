@@ -15,6 +15,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"memento/backend/internal/avatar"
 	"memento/backend/internal/concept"
 	"memento/backend/internal/config"
 	"memento/backend/internal/msgvault"
@@ -139,7 +140,7 @@ Identity pipeline (run by init; re-run individually after archive changes):
   person-resolve      Cluster participants into canonical persons
   people-candidates   Classify persons (human / weak / excluded bots)
   newsletter-detect   Detect newsletter sources from msgvault messages
-  refresh             Rebuild materialized rollup tables + social graph
+  refresh             Rebuild materialized rollup tables + social graph; use --avatars for cached avatars
 
 Review & dedup:
   person-merge-suggest Surface likely duplicate persons via co-recipient signatures
@@ -1400,6 +1401,7 @@ func runRefresh(ctx context.Context, args []string) error {
 	newsletters := fs.Bool("newsletters", false, "refresh only the newsletters rollup")
 	projects := fs.Bool("projects", false, "refresh only the projects rollup")
 	concepts := fs.Bool("concepts", false, "refresh only the concepts rollup")
+	avatars := fs.Bool("avatars", false, "refresh cached Gravatar avatars")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -1419,8 +1421,14 @@ func runRefresh(ctx context.Context, args []string) error {
 		return fmt.Errorf("migrate: %w", err)
 	}
 
-	any := *people || *newsletters || *projects || *concepts
-	if !any || *people {
+	selection := refreshSelection{
+		People:      *people,
+		Newsletters: *newsletters,
+		Projects:    *projects,
+		Concepts:    *concepts,
+		Avatars:     *avatars,
+	}.resolve()
+	if selection.People {
 		fmt.Print("Refreshing people report… ")
 		t0 := time.Now()
 		n, err := refresh.RefreshPeopleReport(ctx, db)
@@ -1429,7 +1437,7 @@ func runRefresh(ctx context.Context, args []string) error {
 		}
 		fmt.Printf("%d rows [%s]\n", n, time.Since(t0).Round(time.Millisecond))
 	}
-	if !any || *newsletters {
+	if selection.Newsletters {
 		fmt.Print("Refreshing newsletters report… ")
 		t0 := time.Now()
 		n, err := refresh.RefreshNewslettersReport(ctx, db)
@@ -1438,7 +1446,7 @@ func runRefresh(ctx context.Context, args []string) error {
 		}
 		fmt.Printf("%d rows [%s]\n", n, time.Since(t0).Round(time.Millisecond))
 	}
-	if !any || *projects {
+	if selection.Projects {
 		fmt.Print("Refreshing projects report… ")
 		t0 := time.Now()
 		n, err := refresh.RefreshProjectsReport(ctx, db)
@@ -1447,7 +1455,7 @@ func runRefresh(ctx context.Context, args []string) error {
 		}
 		fmt.Printf("%d rows [%s]\n", n, time.Since(t0).Round(time.Millisecond))
 	}
-	if !any || *concepts {
+	if selection.Concepts {
 		fmt.Print("Refreshing concepts report… ")
 		t0 := time.Now()
 		n, err := refresh.RefreshConceptsReport(ctx, db)
@@ -1458,7 +1466,7 @@ func runRefresh(ctx context.Context, args []string) error {
 	}
 	// Social graph runs last — depends on resolved person state from people report.
 	// Rebuild when refreshing all, or when person identity (--people) changes.
-	if !any || *people {
+	if selection.Social {
 		fmt.Print("Building social graph…     ")
 		t0 := time.Now()
 		result, err := social.BuildSocialGraph(ctx, db)
@@ -1467,7 +1475,38 @@ func runRefresh(ctx context.Context, args []string) error {
 		}
 		fmt.Printf("%d edges, %d clusters [%s]\n", result.EdgeCount, result.ClusterCount, time.Since(t0).Round(time.Millisecond))
 	}
+	if selection.Avatars {
+		fmt.Print("Refreshing avatars…        ")
+		t0 := time.Now()
+		result, err := avatar.RefreshAll(ctx, db, nil, avatar.RefreshOptions{})
+		if err != nil {
+			return fmt.Errorf("avatars: %w", err)
+		}
+		fmt.Printf("%d found, %d notfound, %d errors [%s]\n", result.Found, result.NotFound, result.Errors, time.Since(t0).Round(time.Millisecond))
+	}
 	return nil
+}
+
+type refreshSelection struct {
+	People      bool
+	Newsletters bool
+	Projects    bool
+	Concepts    bool
+	Social      bool
+	Avatars     bool
+}
+
+func (s refreshSelection) resolve() refreshSelection {
+	dimensionAny := s.People || s.Newsletters || s.Projects || s.Concepts
+	runDefaultDimensions := !dimensionAny && !s.Avatars
+	return refreshSelection{
+		People:      runDefaultDimensions || s.People,
+		Newsletters: runDefaultDimensions || s.Newsletters,
+		Projects:    runDefaultDimensions || s.Projects,
+		Concepts:    runDefaultDimensions || s.Concepts,
+		Social:      runDefaultDimensions || s.People,
+		Avatars:     s.Avatars,
+	}
 }
 
 // slugifyArg is a small local slugifier used by the CLI when --slug is

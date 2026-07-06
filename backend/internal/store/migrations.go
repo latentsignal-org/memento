@@ -760,6 +760,26 @@ CREATE INDEX IF NOT EXISTS idx_memento_ask_context_ref_turn
   ON memento_ask_context_ref(ask_turn_id);
 `,
 	},
+	{
+		Version: 27,
+		Name:    "create_memento_avatar",
+		SQL: `
+CREATE TABLE IF NOT EXISTS memento_avatar (
+  email_hash TEXT PRIMARY KEY,
+  status TEXT NOT NULL CHECK (status IN ('found', 'notfound')),
+  image BLOB,
+  mime_type TEXT,
+  byte_size INTEGER,
+  upstream_etag TEXT,
+  fetched_at TEXT NOT NULL DEFAULT (datetime('now')),
+  CHECK (
+    (status = 'found' AND image IS NOT NULL AND mime_type IS NOT NULL AND byte_size > 0)
+    OR
+    (status = 'notfound' AND image IS NULL AND mime_type IS NULL AND byte_size IS NULL)
+  )
+);
+`,
+	},
 }
 
 func Open(path string) (*sql.DB, error) {

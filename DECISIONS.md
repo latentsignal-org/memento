@@ -5,14 +5,27 @@ sparse: record choices that affect product behavior, data safety, architecture, 
 interfaces, or long-term maintenance. Do not record routine implementation details,
 temporary plans, TODOs, test notes, or decisions already obvious from code.
 
+## 2026-07-06 — Browser avatar traffic stays local
+
+The browser must not request Gravatar or any external avatar host directly. Avatar image URLs use Memento's local
+`/api/avatar/{sha256}` endpoint, where the hash is the SHA256 hex digest of the trimmed, lowercased email and query
+parameters carry only bucketed size plus initials.
+
+The backend may fetch Gravatar with `d=404`, but only when the requested hash matches a known local person email or the
+configured owner email. Results are cached in SQLite in `memento_avatar`, including negative `notfound` rows. Transient
+network/upstream errors are not cached. When no cached photo is available, the server returns a deterministic local SVG
+initials avatar. Bulk avatar refresh is explicitly opt-in via `memento refresh --avatars`; plain `memento refresh` must
+not contact avatar providers.
+
 ## 2026-06-16 — Generated markdown must not trigger arbitrary browser egress
 
 LLM-generated markdown is treated as untrusted content because it can be influenced by
 ingested email/newsletter text. Markdown images are not a supported product feature and
 must be stripped at render sinks. Served HTML documents must also carry a restrictive
 Content-Security-Policy that limits `img-src` and `connect-src` to same-origin browser
-traffic, with only the explicit product exceptions needed for data URLs, Gravatar
-avatars, and Google-hosted Material Symbols font assets.
+traffic, with only the explicit product exceptions needed for data URLs and
+Google-hosted Material Symbols font assets. The former Gravatar image exception was
+removed by the 2026-07-06 local avatar proxy decision.
 
 The same untrusted-content rule forbids rendering archive-derived values through
 `dangerouslySetInnerHTML`. Display names and addresses come from email participant data

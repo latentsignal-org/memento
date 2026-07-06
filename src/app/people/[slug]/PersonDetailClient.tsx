@@ -6,7 +6,7 @@ import type {ReactNode} from "react";
 import {useCallback, useEffect, useMemo, useState} from "react";
 import {contactInitials, displayContactName, maskEmail, maskEmailAddresses} from "@/lib/contact-display";
 import EmailReveal from "@/components/email-reveal";
-import {gravatarUrl} from "@/lib/gravatar";
+import {avatarUrl, initialsFromName} from "@/lib/avatar";
 import type {PersonAttribute, PersonNeighbor, PersonNetwork, PersonRecord, PersonTimelineItem} from "./types";
 import PersonEnrichButton from "@/components/agent/PersonEnrichButton";
 import HowThisWasBuiltPanel from "@/components/agent/HowThisWasBuiltPanel";
@@ -1557,7 +1557,7 @@ function NetworkCard({network}: { network: PersonNetwork }) {
                 {frequentContacts.length > 0 && (
                     <ul className="space-y-3">
                         {frequentContacts.map((n) => {
-                            const avatar = gravatarUrl(n.primary_email, 48);
+                            const avatar = avatarUrl(n.primary_email, 48, initialsFromName(n.canonical_name, n.primary_email));
                             const dispName = displayContactName(n.canonical_name, n.primary_email);
                             return (
                                 <li key={n.person_id}>

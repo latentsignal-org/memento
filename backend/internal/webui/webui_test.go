@@ -67,7 +67,7 @@ func TestServeHTMLSetsContentSecurityPolicy(t *testing.T) {
 	}
 	for _, want := range []string{
 		"default-src 'self'",
-		"img-src 'self' data: https://www.gravatar.com",
+		"img-src 'self' data:",
 		"connect-src 'self'",
 		"object-src 'none'",
 		"frame-ancestors 'none'",

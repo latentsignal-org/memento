@@ -70,6 +70,9 @@ Key design choices:
 - Dimension indexes read materialized rollup tables for fast page loads.
 - Retrieval uses msgvault search: hybrid by default where available, FTS as the
   reliable fallback, and vector search for semantic agent recall.
+- Browser avatar traffic stays local: the UI requests `/api/avatar/{hash}`;
+  the backend may fetch Gravatar only for known local contacts or the configured
+  owner email, and caches both found and missing avatars in SQLite.
 - Deterministic extraction runs before LLM calls.
 - Generated claims are tied back to source messages.
 - Projects and Concepts are user-confirmed before expensive generation.
@@ -330,6 +333,22 @@ Index pages read from materialized rollup tables:
 - `memento_social_group`
 - `memento_social_group_member`
 
+Plain `refresh` does not refresh avatars.
+
+### Refresh cached avatars
+
+```bash
+./memento refresh --avatars
+```
+
+Avatars are served through Memento's local `/api/avatar/{sha256}` endpoint.
+The browser never calls Gravatar directly. The backend fetches Gravatar with a
+definitive missing-avatar mode only for hashes matching known people or the
+configured owner email, then stores positive and negative results in
+`memento_avatar`. Missing or transiently unavailable photos render as
+deterministic local SVG initials avatars. Use `--avatars` when you explicitly
+want to re-check upstream photos.
+
 ### Re-run the People pipeline
 
 Use this after changing person-resolution logic, bot filtering, classifier
@@ -438,7 +457,7 @@ tool parameters and availability, read
 
 # Schema and rollups
 ./memento migrate
-./memento refresh [--people] [--projects] [--newsletters] [--concepts]
+./memento refresh [--people] [--projects] [--newsletters] [--concepts] [--avatars]
 
 # Identity pipeline
 ./memento person-resolve [--persist] [--fuzzy] [--jaro F] [--jaccard F]
@@ -561,6 +580,17 @@ Rebuild the rollups:
 
 Then hard-refresh the browser.
 
+### Contact avatars do not update
+
+Avatar refresh is opt-in and separate from rollup refresh:
+
+```bash
+./memento refresh --avatars
+```
+
+The UI should still request only `/api/avatar/...` URLs. Missing Gravatars are
+cached as `notfound` and displayed as stable local initials avatars.
+
 ### A newsletter appears as a person
 
 Split it out and re-run newsletter detection:
@@ -603,7 +633,9 @@ Use `--force` only in scripts:
 Memento is local-first: the server binds to `127.0.0.1`, your archive is read
 locally, and Memento writes only its own `memento_*` tables. When you configure
 an LLM provider, excerpts of archive content are sent to that provider during
-generation. See [`SECURITY.md`](SECURITY.md).
+generation. Browser avatar image requests stay on the local Memento origin;
+only the backend may contact Gravatar, and only for known local contact or owner
+email hashes. See [`SECURITY.md`](SECURITY.md).
 
 ## License
 

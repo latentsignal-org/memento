@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"memento/backend/internal/avatar"
 	"memento/backend/internal/concept"
 	"memento/backend/internal/msgvaultapi"
 	"memento/backend/internal/newsletter"
@@ -46,6 +47,7 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("POST /api/setup/init", s.requireSetupIncomplete(s.handleSetupInit))
 	s.mux.HandleFunc("POST /api/setup/test-provider", s.requireSetupIncomplete(s.handleSetupTestProvider))
 	s.mux.HandleFunc("GET /api/config", s.handleGetConfig)
+	s.mux.HandleFunc("GET /api/avatar/{hash}", s.handleGetAvatar)
 	s.mux.HandleFunc("POST /api/config", s.handlePostConfig)
 	s.mux.HandleFunc("GET /api/messages/{id}", s.handleGetMessageDetail)
 	s.mux.HandleFunc("GET /api/context-search", s.handleContextSearch)
@@ -1737,7 +1739,7 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 		Origins:        s.opts.AllowedOrigins,
 		OwnerName:      ownerName,
 		OwnerEmail:     ownerEmail,
-		OwnerAvatarURL: gravatarURL(ownerEmail, 128),
+		OwnerAvatarURL: avatar.LocalURL(ownerEmail, 256, avatar.InitialsFromName(ownerName, ownerEmail)),
 		PrivacyEnabled: privacyEnabled,
 	})
 }
@@ -1775,7 +1777,7 @@ func (s *Server) handlePostConfig(w http.ResponseWriter, r *http.Request) {
 		Origins:        s.opts.AllowedOrigins,
 		OwnerName:      ownerName,
 		OwnerEmail:     ownerEmail,
-		OwnerAvatarURL: gravatarURL(ownerEmail, 128),
+		OwnerAvatarURL: avatar.LocalURL(ownerEmail, 256, avatar.InitialsFromName(ownerName, ownerEmail)),
 		PrivacyEnabled: privacyEnabled,
 	})
 }

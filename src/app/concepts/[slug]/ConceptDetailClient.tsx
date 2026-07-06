@@ -12,7 +12,7 @@ import {MessagePreview} from "@/components/evidence/MessagePreview";
 import type {MessageSummary} from "@/components/evidence/types";
 import {useMessageDetail} from "@/components/evidence/useMessageDetail";
 import {contactInitials, displayContactName, maskEmailAddresses} from "@/lib/contact-display";
-import {gravatarUrl} from "@/lib/gravatar";
+import {avatarUrl, initialsFromName} from "@/lib/avatar";
 import {formatMonthDay} from "@/lib/date-utils";
 
 interface ConceptInsight {
@@ -498,7 +498,7 @@ export default function ConceptDetailClient({
                                                             <div
                                                                 className="w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center text-[10px] font-bold flex-shrink-0 overflow-hidden">
                                                                 {person.primary_email ? (
-                                                                    <img src={gravatarUrl(person.primary_email, 56)}
+                                                                    <img src={avatarUrl(person.primary_email, 56, initialsFromName(displayName, person.primary_email))}
                                                                          alt={displayName}
                                                                          className="w-full h-full object-cover"/>
                                                                 ) : (

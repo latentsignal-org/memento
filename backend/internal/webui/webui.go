@@ -152,7 +152,7 @@ func serveHTML(w http.ResponseWriter, content fs.FS, file string, status int) {
 const cspPolicy = "default-src 'self'; " +
 	"script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
 	"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-	"img-src 'self' data: https://www.gravatar.com; " +
+	"img-src 'self' data:; " +
 	"font-src 'self' data: https://fonts.gstatic.com; " +
 	"connect-src 'self'; " +
 	"object-src 'none'; " +

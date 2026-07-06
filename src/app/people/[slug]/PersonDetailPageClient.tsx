@@ -3,7 +3,7 @@
 import {useEffect, useState} from "react";
 import PersonDetailClient from "./PersonDetailClient";
 import {displayContactName} from "@/lib/contact-display";
-import {gravatarUrl} from "@/lib/gravatar";
+import {avatarUrl, initialsFromName} from "@/lib/avatar";
 import {apiGet, currentSlug, privacyEnabled} from "@/lib/api";
 import {type SimulationFlags, simulationFromLocation} from "@/lib/static-page";
 import EntityNotFound from "@/components/EntityNotFound";
@@ -14,10 +14,10 @@ async function loadPerson(slug: string): Promise<PersonRecord | null> {
     if (!match) return null;
     return {
         ...match,
-        avatar_url: gravatarUrl(match.primary_email, 160),
+        avatar_url: avatarUrl(match.primary_email, 160, initialsFromName(match.canonical_name, match.primary_email)),
         top_correspondents: (match.top_correspondents || []).map((c) => ({
             ...c,
-            avatar_url: gravatarUrl(c.primary_email, 64),
+            avatar_url: avatarUrl(c.primary_email, 64, initialsFromName(c.canonical_name, c.primary_email)),
         })),
         slug,
     };
