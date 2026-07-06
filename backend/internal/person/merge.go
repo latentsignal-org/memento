@@ -10,11 +10,12 @@
 // This file surfaces merge candidates by:
 //
 //  1. Reading each person's signature from memento_social_edge.
-//  2. Pre-filtering candidate pairs via shared display-name tokens, so we
-//     never compute O(N²) scores on a 9k-person graph.
+//  2. Pre-filtering candidate pairs via shared display-name/email tokens and
+//     shared non-owner graph neighbors, so we never compute O(N²) scores on a
+//     9k-person graph.
 //  3. Scoring each candidate pair on three independent signals:
 //     - weighted Jaccard of their signatures (the strongest signal)
-//     - name-token Jaccard (cheap protection against false positives)
+//     - name-token Jaccard (soft corroborating evidence)
 //     - temporal overlap of their active windows (catches role changes)
 //  4. Combining the signals into a single score in [0, 1].
 //
@@ -226,7 +227,6 @@ type MergeCandidate struct {
 // FindMergeOptions controls FindMergeCandidates.
 type FindMergeOptions struct {
 	MinSignatureScore float64 // weighted Jaccard threshold (default 0.30)
-	MinNameScore      float64 // name-token Jaccard threshold (default 0.50)
 	MinCombinedScore  float64 // combined-score threshold (default 0.55)
 	TopK              int     // neighbors per signature (default 25)
 	Limit             int     // max candidates returned (default 50)
@@ -237,7 +237,6 @@ type FindMergeOptions struct {
 func DefaultMergeOptions() FindMergeOptions {
 	return FindMergeOptions{
 		MinSignatureScore: 0.30,
-		MinNameScore:      0.50,
 		MinCombinedScore:  0.55,
 		TopK:              250,
 		Limit:             50,
@@ -263,16 +262,12 @@ type personRecord struct {
 // FindMergeCandidates scans memento_person for pairs likely to represent
 // the same human and returns them sorted by combined score, highest first.
 //
-// Performance contract: never quadratic on persons. Uses an inverted
-// token index (display-name tokens + email-local parts) so only pairs
-// that share at least one token are scored. With ~9k persons and Zipf-
-// distributed tokens this is a few thousand comparisons in practice.
+// Performance contract: never quadratic on persons. Uses inverted indexes over
+// display/email tokens and shared graph neighbors so only pairs with some cheap
+// evidence are scored.
 func FindMergeCandidates(ctx context.Context, db *sql.DB, opts FindMergeOptions) ([]MergeCandidate, error) {
 	if opts.MinSignatureScore <= 0 {
 		opts.MinSignatureScore = 0.30
-	}
-	if opts.MinNameScore <= 0 {
-		opts.MinNameScore = 0.50
 	}
 	if opts.MinCombinedScore <= 0 {
 		opts.MinCombinedScore = 0.55
@@ -308,9 +303,24 @@ func FindMergeCandidates(ctx context.Context, db *sql.DB, opts FindMergeOptions)
 		}
 	}
 
-	// Generate unique candidate pairs by walking token buckets.
 	seen := map[[2]int64]bool{} // canonical (min, max)
 	var pairs [][2]int64
+	addPair := func(a, b int64) {
+		if a == b {
+			return
+		}
+		if a > b {
+			a, b = b, a
+		}
+		key := [2]int64{a, b}
+		if seen[key] {
+			return
+		}
+		seen[key] = true
+		pairs = append(pairs, key)
+	}
+
+	// Generate candidate pairs by walking token buckets.
 	for _, ids := range tokenIndex {
 		// Skip buckets larger than 200 — these are noisy generic tokens
 		// like "info" or "team" that won't yield useful merges and would
@@ -320,16 +330,7 @@ func FindMergeCandidates(ctx context.Context, db *sql.DB, opts FindMergeOptions)
 		}
 		for i := 0; i < len(ids); i++ {
 			for j := i + 1; j < len(ids); j++ {
-				a, b := ids[i], ids[j]
-				if a > b {
-					a, b = b, a
-				}
-				key := [2]int64{a, b}
-				if seen[key] {
-					continue
-				}
-				seen[key] = true
-				pairs = append(pairs, key)
+				addPair(ids[i], ids[j])
 			}
 		}
 	}
@@ -337,6 +338,31 @@ func FindMergeCandidates(ctx context.Context, db *sql.DB, opts FindMergeOptions)
 	byID := map[int64]*personRecord{}
 	for i := range persons {
 		byID[persons[i].id] = &persons[i]
+	}
+
+	signatures := map[int64]Signature{}
+	neighborIndex := map[int64][]int64{}
+	for _, p := range persons {
+		rawSig, err := CoRecipientSignature(ctx, db, p.id, opts.TopK)
+		if err != nil {
+			return nil, err
+		}
+		sig := filterOwner(rawSig, ownerIDs)
+		signatures[p.id] = sig
+		for neighborID := range sig {
+			neighborIndex[neighborID] = append(neighborIndex[neighborID], p.id)
+		}
+	}
+	for _, ids := range neighborIndex {
+		if len(ids) > 200 {
+			continue
+		}
+		sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+		for i := 0; i < len(ids); i++ {
+			for j := i + 1; j < len(ids); j++ {
+				addPair(ids[i], ids[j])
+			}
+		}
 	}
 
 	var candidates []MergeCandidate
@@ -347,31 +373,18 @@ func FindMergeCandidates(ctx context.Context, db *sql.DB, opts FindMergeOptions)
 			continue
 		}
 
-		// Cheap name-token check first — skip pairs that don't even share
-		// half their name tokens, regardless of signature.
 		nameScore := jaccardTokens(a.nameTokens, b.nameTokens)
-		if nameScore < opts.MinNameScore {
-			continue
-		}
 
 		// Signature comparison — the strongest signal but the most
-		// expensive query, so deferred behind the name-token gate. Strip
-		// owner edges before scoring; otherwise weighted Jaccard collapses
-		// to ~1.0 for any two contacts who only co-mail with the owner.
-		rawSigA, err := CoRecipientSignature(ctx, db, a.id, opts.TopK)
-		if err != nil {
-			return nil, err
-		}
-		rawSigB, err := CoRecipientSignature(ctx, db, b.id, opts.TopK)
-		if err != nil {
-			return nil, err
-		}
-		sigA := filterOwner(rawSigA, ownerIDs)
-		sigB := filterOwner(rawSigB, ownerIDs)
+		// expensive signal. Strip owner edges before scoring; otherwise
+		// weighted Jaccard collapses to ~1.0 for any two contacts who only
+		// co-mail with the owner.
+		sigA := signatures[a.id]
+		sigB := signatures[b.id]
 		sigJaccard := weightedJaccard(sigA, sigB)
 		sigOverlap := weightedOverlap(sigA, sigB)
 		sigScore := sigJaccard
-		if sigOverlap > sigScore {
+		if nameScore > 0 && sigOverlap > sigScore {
 			sigScore = sigOverlap
 		}
 
@@ -379,25 +392,22 @@ func FindMergeCandidates(ctx context.Context, db *sql.DB, opts FindMergeOptions)
 			continue
 		}
 
-		// Count truly shared neighbors (excluding the owner). A pair
-		// with high Jaccard but zero non-owner shared neighbors is a
-		// degenerate match — both signatures are empty post-filter and
-		// shouldn't be surfaced. The existing person-resolve --fuzzy
-		// pass handles name-only matches; Phase 6 must add evidence
-		// beyond that.
+		// Count truly shared neighbors (excluding the owner). A pair with
+		// zero non-owner shared neighbors is a degenerate match and should
+		// not be surfaced by the graph generator.
 		shared := 0
 		for n := range sigA {
 			if _, ok := sigB[n]; ok {
 				shared++
 			}
 		}
-		if shared < 1 {
+		if shared < 1 || (nameScore == 0 && shared < 2) {
 			continue
 		}
 
 		tempScore := temporalOverlap(a, b)
 
-		combined := 0.6*sigScore + 0.3*nameScore + 0.1*tempScore
+		combined := 0.65*sigScore + 0.25*nameScore + 0.1*tempScore
 		if combined < opts.MinCombinedScore {
 			continue
 		}
@@ -689,7 +699,7 @@ func round3(f float64) float64 {
 // next time `./memento refresh` runs.
 //
 // Locked emails on `fromID` are transferred and remain locked, with
-// link_source rewritten to LinkSourceSignatureMerge. The user invoked the
+// link_source rewritten to LinkSourceManualMerge. The user invoked the
 // merge; they own the consequences.
 //
 // Returns the number of rows transferred per table.
@@ -728,7 +738,7 @@ func MergePersons(ctx context.Context, db *sql.DB, fromID, intoID int64) (MergeR
 
 	now := time.Now().UTC().Format(time.RFC3339)
 
-	// 1. Transfer emails. Mark them as locked + signature_merge so the
+	// 1. Transfer emails. Mark them as locked + manual_merge so the
 	//    next resolver run leaves them alone — this was a user decision.
 	res, err := tx.ExecContext(ctx, `
 		UPDATE memento_person_email
@@ -737,7 +747,7 @@ func MergePersons(ctx context.Context, db *sql.DB, fromID, intoID int64) (MergeR
 		    link_source = ?,
 		    updated_at = ?
 		WHERE person_id = ?
-	`, intoID, LinkSourceSignatureMerge, now, fromID)
+	`, intoID, LinkSourceManualMerge, now, fromID)
 	if err != nil {
 		return result, fmt.Errorf("transfer emails: %w", err)
 	}
@@ -821,7 +831,31 @@ func MergePersons(ctx context.Context, db *sql.DB, fromID, intoID int64) (MergeR
 		result.ProjectMembersTransferred = int(n)
 	}
 
-	// 6. Touch the target person's updated_at so downstream consumers
+	pairA, pairB := fromID, intoID
+	if pairA > pairB {
+		pairA, pairB = pairB, pairA
+	}
+
+	// 6. Resolve pending merge suggestions affected by this merge while
+	//    both person IDs still exist. The merged pair is accepted; other
+	//    pending suggestions involving the absorbed person are no longer
+	//    actionable and should not become ghost rows in the review queue.
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE memento_merge_suggestion
+		SET status = 'accepted', resolved_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+		WHERE status = 'pending' AND person_a_id = ? AND person_b_id = ?
+	`, pairA, pairB); err != nil {
+		return result, fmt.Errorf("accept merge suggestion: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE memento_merge_suggestion
+		SET status = 'rejected', resolved_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+		WHERE status = 'pending' AND (person_a_id = ? OR person_b_id = ?)
+	`, fromID, fromID); err != nil {
+		return result, fmt.Errorf("resolve stale merge suggestions: %w", err)
+	}
+
+	// 7. Touch the target person's updated_at so downstream consumers
 	//    notice the change.
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE memento_person SET updated_at = ? WHERE id = ?
@@ -829,7 +863,7 @@ func MergePersons(ctx context.Context, db *sql.DB, fromID, intoID int64) (MergeR
 		return result, fmt.Errorf("touch into: %w", err)
 	}
 
-	// 7. Delete the source person. memento_people_candidates,
+	// 8. Delete the source person. memento_people_candidates,
 	//    memento_people_report, memento_social_edge, and
 	//    memento_social_metric cascade. They'll be rebuilt on refresh.
 	if _, err := tx.ExecContext(ctx, `

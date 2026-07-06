@@ -47,10 +47,32 @@ export default function PeopleDirectoryClient({initialContacts, initialCounts}: 
     const [contacts, setContacts] = useState<Contact[]>(initialContacts);
     const [isLoadingTab, setIsLoadingTab] = useState(false);
     const [tabCounts, setTabCounts] = useState<UICounts>(initialCounts);
+    const [pendingMergeCount, setPendingMergeCount] = useState<number | null>(null);
 
     useEffect(() => {
         setTabCounts(initialCounts);
     }, [initialCounts]);
+
+    useEffect(() => {
+        let cancelled = false;
+        fetch("/api/people/merge-suggestions?limit=100", {cache: "no-store"})
+            .then((res) => {
+                if (!res.ok) throw new Error(`Merge suggestions failed with ${res.status}`);
+                return res.json();
+            })
+            .then((data) => {
+                if (!cancelled) setPendingMergeCount((data.suggestions || []).length);
+            })
+            .catch((err) => {
+                if (!cancelled) {
+                    console.error("Failed to load merge suggestion count", err);
+                    setPendingMergeCount(null);
+                }
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     useEffect(() => {
         if (filterStatus === "ACTIVE" || filterStatus === "DORMANT") {
@@ -411,6 +433,11 @@ export default function PeopleDirectoryClient({initialContacts, initialCounts}: 
                             >
                                 <span className="material-symbols-outlined text-[16px] leading-none">merge_type</span>
                                 Merge People
+                                {pendingMergeCount && pendingMergeCount > 0 ? (
+                                    <span className="ml-1 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold leading-none text-primary-foreground">
+                                        {pendingMergeCount}
+                                    </span>
+                                ) : null}
                             </Link>
 
                             {/* Local Search Input */}

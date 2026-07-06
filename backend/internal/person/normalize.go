@@ -5,8 +5,9 @@ import (
 	"strings"
 )
 
-// normalizeEmail lowercases and strips plus-tags (alice+newsletter@gmail.com
-// -> alice@gmail.com). Plus-tag stripping only applies inside the local part.
+// normalizeEmail lowercases and applies provider-specific mailbox equivalence
+// rules. The table below is intentionally limited to rules where the provider
+// is known to deliver both spellings to the same mailbox.
 func normalizeEmail(email string) string {
 	email = strings.ToLower(strings.TrimSpace(email))
 	at := strings.LastIndex(email, "@")
@@ -15,8 +16,12 @@ func normalizeEmail(email string) string {
 	}
 	local := email[:at]
 	domain := email[at:]
-	if plus := strings.Index(local, "+"); plus >= 0 && shouldStripPlusTag(local[:plus], domain[1:]) {
+	rules := emailNormalizationRulesFor(domain[1:])
+	if plus := strings.Index(local, "+"); plus >= 0 && rules.stripPlusTag && shouldStripPlusTag(local[:plus], domain[1:]) {
 		local = local[:plus]
+	}
+	if rules.stripDots {
+		local = strings.ReplaceAll(local, ".", "")
 	}
 	return local + domain
 }
@@ -29,22 +34,29 @@ func shouldStripPlusTag(baseLocal, domain string) bool {
 	if baseLocal == "" || isSystemLocalPart(baseLocal) {
 		return false
 	}
-	if !supportsPlusAddressingDomain(domain) {
-		return false
-	}
 	// Restrict stripping to mailbox-shaped locals; this avoids collapsing
 	// generated aliases such as buzz+...@gmail.com that are not personal
 	// subaddressing even though they are hosted on a plus-capable domain.
 	return strings.ContainsAny(baseLocal, "._-") || len(baseLocal) >= 5
 }
 
-func supportsPlusAddressingDomain(domain string) bool {
-	switch strings.ToLower(strings.TrimSpace(domain)) {
-	case "gmail.com", "googlemail.com", "hey.com", "fastmail.com", "pm.me", "proton.me", "protonmail.com":
-		return true
-	default:
-		return false
-	}
+type emailNormalizationRules struct {
+	stripPlusTag bool
+	stripDots    bool
+}
+
+func emailNormalizationRulesFor(domain string) emailNormalizationRules {
+	return providerEmailNormalization[strings.ToLower(strings.TrimSpace(domain))]
+}
+
+var providerEmailNormalization = map[string]emailNormalizationRules{
+	"gmail.com":      {stripPlusTag: true, stripDots: true},
+	"googlemail.com": {stripPlusTag: true, stripDots: true},
+	"hey.com":        {stripPlusTag: true},
+	"fastmail.com":   {stripPlusTag: true},
+	"pm.me":          {stripPlusTag: true},
+	"proton.me":      {stripPlusTag: true},
+	"protonmail.com": {stripPlusTag: true},
 }
 
 // normalizeName lowercases, trims, collapses whitespace, and strips a trailing

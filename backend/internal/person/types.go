@@ -10,7 +10,7 @@ const (
 	LinkSourceJaccard         = "jaccard"
 	LinkSourceManual          = "manual"
 	LinkSourceSingleton       = "singleton"
-	LinkSourceSignatureMerge  = "signature_merge"
+	LinkSourceManualMerge     = "manual_merge"
 )
 
 // Person is one canonical human (or, for non-human clusters that survive
@@ -39,44 +39,49 @@ type PersonEmail struct {
 
 // ResolveOptions controls the matcher pass.
 type ResolveOptions struct {
-	// IncludeFuzzy turns on the Jaro-Winkler + Jaccard second pass. Off by
-	// default because fuzzy matches are inherently lower-confidence and the
-	// deterministic pass already covers Phase-0 needs.
-	IncludeFuzzy bool
-
-	// JaroThreshold is the minimum Jaro-Winkler score to accept a fuzzy link.
-	// 0.92 keeps obvious typos and middle-name variations while rejecting
-	// most coincidental name overlaps. Ignored when IncludeFuzzy is false.
+	// JaroThreshold is the minimum Jaro-Winkler score to emit an advisory
+	// suggestion. It is never used for automatic linking.
 	JaroThreshold float64
 
 	// JaccardThreshold is the minimum Jaccard score (on display-name token
-	// sets) to accept a fuzzy link. Ignored when IncludeFuzzy is false.
+	// sets) to emit an advisory suggestion. It is never used for automatic
+	// linking.
 	JaccardThreshold float64
 
-	// MinMessagesForFuzzy skips the fuzzy pass for low-volume participants
-	// to keep noise down — fuzzy matches on a single-message contact are
-	// almost never worth the false-positive risk.
+	// MinMessagesForFuzzy skips fuzzy advisory suggestions for low-volume
+	// clusters to keep noise down.
 	MinMessagesForFuzzy int64
 }
 
-// DefaultResolveOptions returns the Phase-0 defaults.
+// DefaultResolveOptions returns conservative advisory-suggestion defaults.
 func DefaultResolveOptions() ResolveOptions {
 	return ResolveOptions{
-		IncludeFuzzy:        false,
 		JaroThreshold:       0.92,
 		JaccardThreshold:    0.6,
 		MinMessagesForFuzzy: 5,
 	}
 }
 
+// ResolveSuggestion is an advisory duplicate-person signal emitted during
+// resolution. Cluster IDs are run-local and are mapped to persisted person IDs
+// by later persistence/suggestion-store code.
+type ResolveSuggestion struct {
+	ClusterA       int      `json:"cluster_a"`
+	ClusterB       int      `json:"cluster_b"`
+	Sources        []string `json:"sources"`
+	NameSimilarity float64  `json:"name_similarity"`
+	TokenOverlap   float64  `json:"token_overlap"`
+}
+
 // ResolveReport summarizes a matcher run.
 type ResolveReport struct {
-	GeneratedAt      time.Time      `json:"generated_at"`
-	Database         string         `json:"database"`
-	ParticipantsSeen int            `json:"participants_seen"`
-	LockedSkipped    int            `json:"locked_skipped"`
-	PersonsTotal     int            `json:"persons_total"`
-	PersonsCreated   int            `json:"persons_created"`
-	EmailsLinked     int            `json:"emails_linked"`
-	BySource         map[string]int `json:"by_source"`
+	GeneratedAt      time.Time           `json:"generated_at"`
+	Database         string              `json:"database"`
+	ParticipantsSeen int                 `json:"participants_seen"`
+	LockedSkipped    int                 `json:"locked_skipped"`
+	PersonsTotal     int                 `json:"persons_total"`
+	PersonsCreated   int                 `json:"persons_created"`
+	EmailsLinked     int                 `json:"emails_linked"`
+	BySource         map[string]int      `json:"by_source"`
+	Suggestions      []ResolveSuggestion `json:"suggestions,omitempty"`
 }

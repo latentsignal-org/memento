@@ -51,6 +51,9 @@ Individual deterministic commands:
 
 ```bash
 ./memento person-resolve --persist
+./memento person-repair-nondeterministic --dry-run
+./memento person-repair-nondeterministic --apply
+./memento person-merge-suggest --sort combined
 ./memento people-candidates --limit 200 --persist
 ./memento newsletter-detect --persist
 ./memento refresh
@@ -119,6 +122,7 @@ Email normalization:
 
 - lowercases and trims email addresses
 - selectively strips plus-tags only for domains known to support plus addressing
+- strips dots only for Gmail and Googlemail addresses
 - avoids stripping generated/system-looking local parts to prevent large false clusters
 
 Name normalization:
@@ -127,17 +131,15 @@ Name normalization:
 - collapses whitespace
 - strips trailing forwarder parentheticals when they look like forwarding markers, for example
   `Jane Smith (via Google Photos)`
-- tokenizes display names for the optional fuzzy pass
+- tokenizes display names for advisory merge suggestions
 
-Merge passes:
+Automatic merge pass:
 
-1. Plus-tag / normalized-email merge: participants with the same normalized email enter one cluster.
-2. Exact normalized-name merge: non-generic identical normalized display names merge.
-3. Forwarder unwrap tagging: addresses with forwarding parentheticals are tagged with `forwarder_unwrap`.
-4. Optional fuzzy merge: Jaro-Winkler and Jaccard name matching can be enabled with `--fuzzy`, but it is off by default.
+1. Normalized-email merge: participants with the same provider-normalized email enter one cluster.
 
-The default resolver is deterministic-first. Fuzzy matching is deliberately opt-in because it can create false positive
-merges.
+Display-name equality, forwarder parentheticals, Jaro-Winkler similarity, token overlap, and graph signatures are
+advisory only. They are emitted as person-person merge suggestions and never silently link identities. The legacy
+`person-resolve --fuzzy` flag is a deprecated no-op; fuzzy thresholds now affect advisory suggestion generation only.
 
 ### Person Persistence
 
@@ -145,6 +147,7 @@ Resolved clusters are persisted into:
 
 - `memento_person`
 - `memento_person_email`
+- `memento_merge_suggestion`
 
 Persistence preserves stable `person_id` values:
 
@@ -164,6 +167,38 @@ Each email row records the link source:
 - `jaccard`
 - `manual`
 - `singleton`
+
+New automatic rows should be `plus_tag` or `singleton`; the name and fuzzy sources are retained for legacy rows, repair
+queries, and historical reporting.
+
+### Legacy Repair
+
+`person-repair-nondeterministic` is an explicit operator command for repairing old resolver-created over-merges. It is
+not part of normal resolver persistence.
+
+The command scans `memento_person_email` and targets only unlocked rows whose source is `exact_name`,
+`forwarder_unwrap`, `jaro_winkler`, or `jaccard`. It preserves locked rows, manual rows, `manual_merge` rows, and
+deterministic normalized-email groups, including plus-tag and Gmail/Googlemail dot equivalents. For each person it keeps
+the group containing the person's primary email; if there is no primary-email group, it falls back to a locked/manual or
+manual-merge anchor, then the largest/oldest deterministic group.
+
+`--dry-run` reports persons scanned, persons affected, split counts by prior source, and the emails that would move.
+`--apply` splits unsafe non-equivalent emails into new locked/manual person rows with a repair note.
+
+### Merge Suggestions
+
+Advisory duplicate-person suggestions are persisted in `memento_merge_suggestion`. The queue stores person-person pairs
+only; it does not contain legacy past-merge review rows.
+
+Suggestion sources include exact display-name matches, forwarder parenthetical matches, Jaro-Winkler spelling
+similarity, shared name-word overlap, and graph signatures. Re-running resolution or refresh upserts pending rows,
+dedupes by person pair, and preserves accepted/rejected decisions so rejected pairs do not resurface.
+
+Review entry points:
+
+- `GET /api/people/merge-suggestions?sort=combined|name_similarity|token_overlap|signature`
+- `POST /api/people/merge-decision` with one `{id, decision}` per request
+- `./memento person-merge-suggest`
 
 ### Candidate Aggregation
 

@@ -321,6 +321,9 @@ Important CLI commands currently supported by `./memento`:
 - `person-show`
 - `person-link`
 - `person-split`
+- `person-merge`
+- `person-merge-suggest`
+- `person-repair-nondeterministic`
 - `project`
 - `project-pages`
 - `newsletter-detect`
@@ -374,7 +377,7 @@ What `memento init` does now:
    `MEMENTO_MODEL_API_KEY` in repo-root `.env`.
 5. Seeds optional internal/development defaults such as `MEMENTO_INTERNAL_TOKEN`,
    `MEMENTO_BACKEND_URL`, and `MEMENTO_AGENT_STEP_LIMIT` when needed.
-6. Resolves persons and persists clusters.
+6. Resolves deterministic person clusters and persists advisory merge suggestions.
 7. Builds people candidates.
 8. Detects newsletter sources.
 9. Refreshes all materialized rollup tables.
@@ -401,13 +404,14 @@ database, or graph store in the implementation.
 
 ## 12. Current schema summary
 
-The current migration version is 27.
+The current migration version is 29.
 
 ### 8.1 Core Memento tables
 
 People and identity:
 
 - `memento_people_candidates`
+- `memento_merge_suggestion`
 - `memento_person`
 - `memento_person_email`
 
@@ -533,6 +537,8 @@ Dimensions:
 
 - `GET /api/people`
 - `GET /api/people/{slug}`
+- `GET /api/people/merge-suggestions`
+- `POST /api/people/merge-decision`
 - `GET /api/projects`
 - `GET /api/projects/{slug}`
 - `GET /api/newsletters`
@@ -960,8 +966,8 @@ routes in `browser_api.go` — not background jobs in `runners.go`.
 
 `backend/internal/server/runners.go` currently:
 
-- resolves persons
-- persists clusters
+- resolves persons into deterministic mailbox-equivalent clusters
+- persists deterministic clusters and advisory merge suggestions
 - builds people candidates
 - refreshes people report
 - detects newsletters

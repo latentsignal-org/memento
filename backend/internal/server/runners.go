@@ -28,27 +28,14 @@ func (s *Server) runPeopleRefresh(jobID string) {
 	ctx, cancel := jobCtx()
 	defer cancel()
 
-	s.jobs.Append(jobID, "Loading locked person mappings…", JobRunning)
-	locked, err := person.LoadLockedEmails(ctx, s.db)
-	if err != nil {
-		s.jobs.Finish(jobID, fmt.Errorf("load locked emails: %w", err))
-		return
-	}
-
 	s.jobs.Append(jobID, "Resolving canonical persons…", JobRunning)
-	report, clusters, err := person.Resolve(ctx, s.reader, locked, person.DefaultResolveOptions())
+	report, err := person.ResolveAndPersist(ctx, s.reader, s.db, person.DefaultResolveOptions())
 	if err != nil {
-		s.jobs.Finish(jobID, fmt.Errorf("resolve: %w", err))
+		s.jobs.Finish(jobID, fmt.Errorf("resolve and persist persons: %w", err))
 		return
 	}
 	s.jobs.Append(jobID, fmt.Sprintf("Resolved %d clusters from %d participants.", report.PersonsTotal, report.ParticipantsSeen), JobRunning)
-
-	created, linked, err := person.PersistClusters(ctx, s.db, clusters)
-	if err != nil {
-		s.jobs.Finish(jobID, fmt.Errorf("persist clusters: %w", err))
-		return
-	}
-	s.jobs.Append(jobID, fmt.Sprintf("Persisted %d new persons, %d emails linked.", created, linked), JobRunning)
+	s.jobs.Append(jobID, fmt.Sprintf("Persisted %d new persons, %d emails linked.", report.PersonsCreated, report.EmailsLinked), JobRunning)
 
 	s.jobs.Append(jobID, "Building candidate report…", JobRunning)
 	candReport, err := people.BuildCandidateReport(ctx, s.reader, people.CandidateOptions{Limit: 200})
@@ -77,6 +64,14 @@ func (s *Server) runPeopleRefresh(jobID string) {
 		return
 	}
 	s.jobs.Append(jobID, fmt.Sprintf("Wrote %d social edges across %d clusters.", graphResult.EdgeCount, graphResult.ClusterCount), JobRunning)
+
+	s.jobs.Append(jobID, "Persisting merge review suggestions…", JobRunning)
+	mergeCandidates, err := person.GenerateAndPersistGraphSuggestions(ctx, s.db, person.DefaultMergeOptions())
+	if err != nil {
+		s.jobs.Finish(jobID, fmt.Errorf("persist merge suggestions: %w", err))
+		return
+	}
+	s.jobs.Append(jobID, fmt.Sprintf("Queued %d graph-backed merge suggestions.", len(mergeCandidates)), JobRunning)
 
 	s.jobs.Finish(jobID, nil)
 }

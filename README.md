@@ -74,6 +74,8 @@ Key design choices:
   the backend may fetch Gravatar only for known local contacts or the configured
   owner email, and caches both found and missing avatars in SQLite.
 - Deterministic extraction runs before LLM calls.
+- Automatic identity linking requires deterministic mailbox equivalence; all
+  weaker duplicate-person evidence goes to a human review queue.
 - Generated claims are tied back to source messages.
 - Projects and Concepts are user-confirmed before expensive generation.
 
@@ -371,16 +373,38 @@ thresholds, or after a large archive update.
 
 Manual links are locked overrides and survive later resolver runs.
 
-### Surface duplicate people
+### Review and merge duplicate people
+
+Automatic resolution only links addresses that are provably the same mailbox
+(case, plus-tags, Gmail dot-insensitivity). Weaker evidence — identical display
+names, forwarder patterns, similar spellings, shared contacts — never merges
+automatically; it lands in a persisted review queue instead.
+
+The primary way to merge is the web app: open **People → Merge People**
+(`/people/merge-review`), sort the queue by Best match, Similar spelling,
+Shared name words, or Mutual contacts, and accept or reject each pair one at a
+time. Accepting merges immediately; rejected pairs never resurface on later
+resolver runs.
+
+The same queue is available from the CLI:
 
 ```bash
-./memento person-merge-suggest
+./memento person-merge-suggest --sort combined
 ./memento person-merge --from 3656 --into 3100
 ./memento refresh --people
 ```
 
 `person-merge` transfers emails, notes, AI facets, narratives, and project
-memberships from `--from` into `--into`.
+memberships from `--from` into `--into`, and resolves any pending suggestions
+that referenced the merged pair.
+
+If the archive was resolved by an older Memento version whose resolver merged
+on display-name evidence, repair those links explicitly:
+
+```bash
+./memento person-repair-nondeterministic --dry-run   # report only
+./memento person-repair-nondeterministic --apply     # split unsafe links
+```
 
 ### Work with Projects
 
@@ -460,7 +484,7 @@ tool parameters and availability, read
 ./memento refresh [--people] [--projects] [--newsletters] [--concepts] [--avatars]
 
 # Identity pipeline
-./memento person-resolve [--persist] [--fuzzy] [--jaro F] [--jaccard F]
+./memento person-resolve [--persist] [--jaro F] [--jaccard F]
 ./memento people-candidates [--limit N] [--include-excluded] [--persist]
 ./memento newsletter-detect [--persist] [--min-messages N]
 
@@ -469,8 +493,9 @@ tool parameters and availability, read
 ./memento person-show --id N
 ./memento person-link --email E --person ID [--note "..."]
 ./memento person-split --email E [--name N] [--note "..."]
-./memento person-merge-suggest [--limit N] [--json]
+./memento person-merge-suggest [--limit N] [--sort combined|name_similarity|token_overlap|signature] [--status S] [--json]
 ./memento person-merge --from ID --into ID [--yes]
+./memento person-repair-nondeterministic (--dry-run | --apply) [--json]
 
 # Projects
 ./memento project create --name N --slug S [--started YYYY-MM-DD]
@@ -603,7 +628,10 @@ Split it out and re-run newsletter detection:
 
 ### A person is split across multiple profiles
 
-Use a locked manual link or merge:
+This is expected when the addresses are not provably the same mailbox — the
+resolver no longer merges on display-name evidence. Check the review queue at
+**People → Merge People** first; the pair is usually already suggested there.
+From the CLI, use a locked manual link or merge:
 
 ```bash
 ./memento person-link --email other@example.com --person 42 --note "same human"

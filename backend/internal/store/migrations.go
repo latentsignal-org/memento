@@ -762,6 +762,41 @@ CREATE INDEX IF NOT EXISTS idx_memento_ask_context_ref_turn
 	},
 	{
 		Version: 27,
+		Name:    "create_merge_suggestions",
+		SQL: `
+CREATE TABLE IF NOT EXISTS memento_merge_suggestion (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  person_a_id INTEGER NOT NULL,
+  person_b_id INTEGER NOT NULL,
+  sources TEXT NOT NULL DEFAULT '[]',
+  name_similarity REAL NOT NULL DEFAULT 0,
+  token_overlap REAL NOT NULL DEFAULT 0,
+  signature_score REAL NOT NULL DEFAULT 0,
+  combined_score REAL NOT NULL DEFAULT 0,
+  scores_stale INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  resolved_at DATETIME,
+  CHECK(person_a_id < person_b_id),
+  CHECK(status IN ('pending', 'accepted', 'rejected')),
+  UNIQUE(person_a_id, person_b_id)
+);
+CREATE INDEX IF NOT EXISTS idx_memento_merge_suggestion_status
+  ON memento_merge_suggestion(status, combined_score DESC, updated_at DESC);
+`,
+	},
+	{
+		Version: 28,
+		Name:    "rename_signature_merge_link_source",
+		SQL: `
+UPDATE memento_person_email
+SET link_source = 'manual_merge'
+WHERE link_source = 'signature_merge';
+`,
+	},
+	{
+		Version: 29,
 		Name:    "create_memento_avatar",
 		SQL: `
 CREATE TABLE IF NOT EXISTS memento_avatar (
