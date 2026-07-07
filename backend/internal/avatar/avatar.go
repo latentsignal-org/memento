@@ -141,9 +141,8 @@ func FallbackSVG(hash string, initials string, size int) []byte {
 	if fontSize < 12 {
 		fontSize = 12
 	}
-	radius := size / 2
 	text := html.EscapeString(initials)
-	svg := fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d" role="img"><rect width="%d" height="%d" rx="%d" fill="%s"/><text x="50%%" y="50%%" dy=".35em" text-anchor="middle" fill="#fff" font-family="Arial, Helvetica, sans-serif" font-size="%d" font-weight="700">%s</text></svg>`,
-		size, size, size, size, size, size, radius, color, fontSize, text)
+	svg := fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d" role="img"><rect width="%d" height="%d" fill="%s"/><text x="50%%" y="50%%" dy=".35em" text-anchor="middle" fill="#fff" font-family="Arial, Helvetica, sans-serif" font-size="%d" font-weight="700">%s</text></svg>`,
+		size, size, size, size, size, size, color, fontSize, text)
 	return []byte(svg)
 }

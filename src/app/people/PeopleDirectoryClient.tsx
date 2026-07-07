@@ -590,7 +590,7 @@ export default function PeopleDirectoryClient({initialContacts, initialCounts}: 
                                                     {contact.avatarUrl ? (
                                                         <img
                                                             alt={contact.name}
-                                                            className="w-full h-full object-cover"
+                                                            className="block w-full h-full object-cover"
                                                             src={contact.avatarUrl}
                                                         />
                                                     ) : (

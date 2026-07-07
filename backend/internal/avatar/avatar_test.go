@@ -54,6 +54,9 @@ func TestFallbackSVGDeterministicAndEscaped(t *testing.T) {
 	if !strings.Contains(string(FallbackSVG(hashA, "AB", 900)), `width="512"`) {
 		t.Fatal("large size was not clamped")
 	}
+	if strings.Contains(string(FallbackSVG(hashA, "AB", 64)), `rx=`) {
+		t.Fatal("fallback avatar should paint edge-to-edge and let the UI frame provide rounding")
+	}
 }
 
 func TestFetcher(t *testing.T) {
