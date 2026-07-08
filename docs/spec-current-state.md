@@ -332,6 +332,7 @@ Important CLI commands currently supported by `./memento`:
 - `concept`
 - `concept-pages`
 - `refresh`
+- `refresh --avatars`
 - `serve`
 
 ## 10. Environment and config
@@ -403,7 +404,7 @@ database, or graph store in the implementation.
 
 ## 12. Current schema summary
 
-The current migration version is 27.
+The current migration version is 29.
 
 ### 8.1 Core Memento tables
 
@@ -435,6 +436,14 @@ Concepts:
 Config:
 
 - `memento_config`
+
+Avatar cache:
+
+- `memento_avatar`
+
+`memento_avatar` stores local avatar proxy results keyed by SHA256 hex of the trimmed, lowercased email. Positive rows
+store image bytes, MIME type, byte size, upstream ETag metadata, and fetch time. Negative `notfound` rows are cached
+without image bytes. Transient upstream/network errors are not cached.
 
 ### 8.2 Rollup/materialized report tables
 
@@ -518,6 +527,11 @@ General:
 - `GET /api/health`
 - `GET /api/config`
 - `POST /api/config`
+- `GET /api/avatar/{hash}`
+
+`/api/avatar/{hash}` serves cached raster avatars or deterministic local SVG initials fallbacks. The browser never calls
+Gravatar directly; the backend only fetches Gravatar for hashes matching known local person emails or the configured
+owner email.
 
 Dimensions:
 
@@ -549,6 +563,12 @@ Jobs and refresh:
 - `POST /api/newsletters/detect`
 - `POST /api/newsletters/{slug}/generate`
 - `GET /api/jobs/{id}`
+
+CLI refresh:
+
+- `memento refresh` refreshes dimension rollups and social graph only.
+- `memento refresh --avatars` refreshes cached Gravatar avatars only.
+- `memento refresh --people --avatars` refreshes the people/social flows and avatars.
 
 Drafts:
 

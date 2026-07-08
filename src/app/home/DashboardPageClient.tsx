@@ -2,7 +2,7 @@
 
 import {useEffect, useState} from "react";
 import {displayContactName, maskEmail, maskEmailAddresses} from "@/lib/contact-display";
-import {gravatarUrl} from "@/lib/gravatar";
+import {avatarUrl, initialsFromName} from "@/lib/avatar";
 import {apiGet, privacyEnabled as readPrivacyEnabled} from "@/lib/api";
 import DashboardClient from "@/components/agent/DashboardClient";
 import {relativeDate} from "@/lib/date-utils";
@@ -189,7 +189,7 @@ async function loadProjects(): Promise<ProjectDashboardItem[]> {
                 dateRange: data.date_range || {first: "", last: ""},
                 members: (data.members || []).map((member) => ({
                     ...member,
-                    avatar_url: gravatarUrl(member.primary_email, 48),
+                    avatar_url: avatarUrl(member.primary_email, 48, initialsFromName(member.canonical_name, member.primary_email)),
                 })),
                 summary: data.narrative?.summary || "",
                 currentUnderstanding: data.narrative?.current_understanding || "",
@@ -205,7 +205,7 @@ async function loadPeople(privacyEnabled: boolean): Promise<{ generatedAt: strin
     const people = (data.people || []).map((person) => ({
         name: displayContactName(person.canonical_name, person.primary_email, privacyEnabled),
         email: person.primary_email || "",
-        avatarUrl: gravatarUrl(person.primary_email, 64),
+        avatarUrl: avatarUrl(person.primary_email, 64, initialsFromName(person.canonical_name, person.primary_email)),
         totalMessages: person.total_messages || 0,
         lastMessageAt: person.last_message_at || "",
         latestSubject: maskEmailAddresses(person.timeline?.[0]?.subject || "No recent subject", privacyEnabled),

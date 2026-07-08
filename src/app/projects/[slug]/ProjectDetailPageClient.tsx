@@ -2,14 +2,20 @@
 
 import {useEffect, useState} from "react";
 import ProjectDetailClient from "./ProjectDetailClient";
-import {gravatarUrl} from "@/lib/gravatar";
+import {avatarUrl, initialsFromName} from "@/lib/avatar";
 import {apiGet, currentSlug} from "@/lib/api";
 import {type SimulationFlags, simulationFromLocation} from "@/lib/static-page";
 import EntityNotFound from "@/components/EntityNotFound";
 
+interface ProjectMemberPayload {
+    primary_email?: string;
+    canonical_name?: string;
+    [k: string]: unknown;
+}
+
 interface ProjectPayload {
     name?: string;
-    members?: Array<{ primary_email?: string; [k: string]: unknown }>;
+    members?: ProjectMemberPayload[];
     narrative?: { summary?: string };
 
     [k: string]: unknown;
@@ -32,7 +38,7 @@ export default function ProjectDetailPageClient() {
             data.timeline = data.timeline || [];
             data.members = (data.members || []).map((member) => ({
                 ...member,
-                avatar_url: gravatarUrl(member.primary_email || "", 64),
+                avatar_url: avatarUrl(member.primary_email || "", 64, initialsFromName(member.canonical_name, member.primary_email)),
             }));
             if (data.name) document.title = `${data.name} | Memento`;
             setProject(data);

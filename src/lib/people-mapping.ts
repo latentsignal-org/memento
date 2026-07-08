@@ -1,6 +1,6 @@
 import {Contact} from "@/components/contact-detail";
 import {displayContactName, maskEmail, maskEmailAddresses} from "@/lib/contact-display";
-import {gravatarUrl} from "@/lib/gravatar";
+import {avatarUrl, initialsFromName} from "@/lib/avatar";
 import {formatMonthDay} from "@/lib/date-utils";
 import {slugify} from "@/lib/citation";
 
@@ -106,7 +106,7 @@ export function mapPersonToContact(person: any, generatedAtStr?: string, privacy
     }));
 
     const mutualContacts = person.top_correspondents
-        ? person.top_correspondents.slice(0, 3).map((c: any) => gravatarUrl(c.primary_email, 48))
+        ? person.top_correspondents.slice(0, 3).map((c: any) => avatarUrl(c.primary_email, 48, initialsFromName(c.canonical_name, c.primary_email)))
         : [];
     const mutualContactsCount = person.top_correspondents
         ? Math.max(0, person.top_correspondents.length - 3)
@@ -123,7 +123,7 @@ export function mapPersonToContact(person: any, generatedAtStr?: string, privacy
         status,
         lastInteraction,
         lastInteractionTime: person.last_message_at || "",
-        avatarUrl: gravatarUrl(person.primary_email, 128),
+        avatarUrl: avatarUrl(person.primary_email, 128, initialsFromName(person.canonical_name, person.primary_email)),
         alias: person.aliases
             ? person.aliases.map((a: any) => `${a.display_name || "Alias"} · ${maskEmail(a.email_address, privacyEnabled)}`)
             : [],

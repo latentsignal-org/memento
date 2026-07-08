@@ -11,7 +11,6 @@ package server
 
 import (
 	"context"
-	"crypto/sha256"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -23,6 +22,7 @@ import (
 	"time"
 
 	"memento/backend/internal/agentrunner"
+	"memento/backend/internal/avatar"
 	"memento/backend/internal/config"
 	"memento/backend/internal/msgvault"
 	"memento/backend/internal/store"
@@ -44,6 +44,7 @@ type Server struct {
 	reader   *msgvault.Reader
 	jobs     *JobStore
 	agents   *agentrunner.Runner
+	avatars  *avatar.Service
 	demoMode bool
 }
 
@@ -63,11 +64,12 @@ func New(opts Options, db *sql.DB, reader *msgvault.Reader) *Server {
 		}
 	}
 	s := &Server{
-		opts:   opts,
-		mux:    http.NewServeMux(),
-		db:     db,
-		reader: reader,
-		jobs:   NewJobStore(),
+		opts:    opts,
+		mux:     http.NewServeMux(),
+		db:      db,
+		reader:  reader,
+		jobs:    NewJobStore(),
+		avatars: avatar.NewService(db, nil),
 	}
 	var providers []agentrunner.Provider
 	if demoMode, err := store.GetConfig(context.Background(), db, "demo_mode"); err == nil && demoMode == "true" {
@@ -295,21 +297,6 @@ func archiveSummary(ctx context.Context, reader *msgvault.Reader) string {
 		return "unavailable: " + err.Error()
 	}
 	return fmt.Sprintf("%d messages (%d sources)", stats.Messages, stats.Sources)
-}
-
-func gravatarURL(email string, size int) string {
-	email = strings.ToLower(strings.TrimSpace(email))
-	if email == "" || !strings.Contains(email, "@") {
-		return ""
-	}
-	if size < 24 {
-		size = 24
-	}
-	if size > 512 {
-		size = 512
-	}
-	hash := sha256.Sum256([]byte(email))
-	return fmt.Sprintf("https://www.gravatar.com/avatar/%x?s=%d&d=identicon&r=g", hash, size)
 }
 
 // Flush forwards to the underlying ResponseWriter so SSE streaming works

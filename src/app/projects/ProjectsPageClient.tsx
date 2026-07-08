@@ -2,7 +2,7 @@
 
 import {useEffect, useState} from "react";
 import Link from "next/link";
-import {gravatarUrl} from "@/lib/gravatar";
+import {avatarUrl, initialsFromName} from "@/lib/avatar";
 import {apiGet} from "@/lib/api";
 import HowProjectsWork from "./HowProjectsWork";
 import ProjectsClient, {type ProjectSummary} from "./ProjectsClient";
@@ -44,7 +44,7 @@ async function getProjects(): Promise<ProjectSummary[]> {
             dateRange: detail?.date_range || {first: "", last: ""},
             members: (detail?.members || []).map((member) => ({
                 ...member,
-                avatar_url: gravatarUrl(member.primary_email || "", 48),
+                avatar_url: avatarUrl(member.primary_email || "", 48, initialsFromName(member.canonical_name, member.primary_email)),
             })),
             summary: detail?.narrative?.summary || s.summary_excerpt || "",
             aliases: detail?.aliases || s.aliases || [],
